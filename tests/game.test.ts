@@ -14,8 +14,9 @@ const H = (slot: number): Location => ({ area: 'hero', slot })
 const id = (s: GameState) => currentAdventure(s).id
 const live = (s: GameState) => [...s.slots, ...s.heroSlots, ...s.pendingIncoming].filter((i): i is Item => !!i)
 const ids = (s: GameState) => live(s).map((i) => i.id).sort()
+const unchanged = (actual: GameState, expected: GameState) => assert.deepEqual({ ...actual, notice: expected.notice }, expected)
 function move(s: GameState, from: Location, to: Location): GameState {
-  const item = (from.area === 'warehouse' ? s.slots : s.heroSlots)[from.slot]!
+  const item = (from.area === 'warehouse' ? s.slots : from.area === 'hero' ? s.heroSlots : s.pendingIncoming)[from.slot]!
   return gameReducer(s, { type: 'transfer', from, to, itemId: item.id, adventureId: id(s) })
 }
 const depart = (s: GameState, now = 1_000_000, seed = 0) => gameReducer(s, { type: 'depart', adventureId: id(s), now, seed })
@@ -37,6 +38,8 @@ function fullWarehouse(): GameState {
   let s = createGame()
   while (s.slots.some((i) => i === null)) {
     s = welcome(depart(s))
+    for (const i of [...s.heroSlots, ...s.pendingIncoming]) if(i) s=gameReducer(s,{type:'intake-toggle',itemId:i.id})
+    s=gameReducer(s,{type:'receive',seed:1})
     s = gameReducer(s, { type: 'next', adventureId: id(s) })
   }
   return s
@@ -62,15 +65,15 @@ test('any kind can be prepared and returned with its original identity and no mu
   }
   assert.deepEqual(s.slots, original.slots)
 })
-test('occupied/empty warehouse and cross-inventory swaps conserve stock, even at capacity', () => {
+test('warehouse swaps conserve stock; occupied cross-inventory destinations reject moves', () => {
   let s = createGame(); Object.freeze(s.slots)
   const a = s.slots[0], b = s.slots[156]
   s = move(s, W(0), W(156)); assert.equal(s.slots[0], b); assert.equal(s.slots[156], a)
   for (let i = 0; i < 8; i++) s = move(s, W(s.slots.findIndex(Boolean)), H(i))
   const action = { type: 'transfer', from: W(90), to: H(8), itemId: s.slots[90]!.id, adventureId: id(s) } as const
-  assert.equal(gameReducer(s, action), s)
+  unchanged(gameReducer(s, action), s)
   const hero = s.heroSlots[0], warehouse = s.slots[90]
-  s = move(s, W(90), H(0)); assert.equal(s.heroSlots[0], warehouse); assert.equal(s.slots[90], hero)
+  s = move(s, W(90), H(0)); assert.equal(s.heroSlots[0], hero); assert.equal(s.slots[90], warehouse)
   s = move(s, H(0), H(7))
   assert.equal(ids(s).length, 48); assert.equal(new Set(ids(s)).size, 48)
 })
@@ -90,15 +93,15 @@ test('invalid, same-cell, stale ID, and previous-day transfers cannot change sto
   const s = createGame()
   const base = { type: 'transfer', from: W(0), to: H(0), itemId: s.slots[0]!.id, adventureId: id(s) } as const
   for (const action of [{ ...base, to: W(0) }, { ...base, to: W(-1) }, { ...base, to: H(NaN) },
-    { ...base, itemId: 'wrong' }, { ...base, adventureId: 'day-0' }, { ...base, from: W(160) }]) assert.equal(gameReducer(s, action), s)
-  const moved = gameReducer(s, base); assert.equal(gameReducer(moved, base), moved)
+    { ...base, itemId: 'wrong' }, { ...base, adventureId: 'day-0' }, { ...base, from: W(160) }]) unchanged(gameReducer(s, action), s)
+  const moved = gameReducer(s, base); unchanged(gameReducer(moved, base), moved)
 })
 test('departure commits once, persists exact 60..180 seconds and locks hero inventory', () => {
   let s = move(createGame(), W(0), H(0)); const prepared = s
   s = depart(s); assert.equal(phase(s, 1_000_000), 'away')
   assert.deepEqual(currentAdventure(s).timing, { startedAt: 1_000_000, durationMs: 60000, returnAt: 1_060_000 })
   assert.equal(depart(s, 2_000_000, 120), s)
-  assert.equal(move(s, H(0), W(0)), s); assert.equal(move(s, W(3), H(1)), s)
+  unchanged(move(s, H(0), W(0)), s); unchanged(move(s, W(3), H(1)), s)
   assert.notEqual(move(s, W(3), W(6)), s)
   assert.equal(currentAdventure(s).issued[0], prepared.heroSlots[0])
   for (let seed = 0; seed <= 120; seed++) assert.equal(currentAdventure(depart(createGame(), 0, seed)).timing!.durationMs, (60 + seed) * 1000)
@@ -107,7 +110,7 @@ test('departure commits once, persists exact 60..180 seconds and locks hero inve
 test('empty preparation can depart; no inventory can cause a softlock', () => {
   let s = depart(createGame())
   assert.equal(currentAdventure(s).issued.length, 0)
-  s = welcome(s); assert.equal(s.pendingIncoming.length, 0); assert.equal(s.slots.filter(Boolean).length, 52)
+  s = welcome(s); assert.equal(s.pendingIncoming.length, 0); assert.equal(s.slots.filter(Boolean).length, 48); assert.equal(s.heroSlots.filter(Boolean).length,4)
   assert.equal(phase(s, 0), 'returned')
 })
 test('deadline gates return, repeats/stale next and return actions do not rerun anything', () => {
@@ -123,25 +126,45 @@ test('deadline gates return, repeats/stale next and return actions do not rerun 
   assert.equal(gameReducer(next, { type: 'next', adventureId: id(s) }), next)
   assert.equal(gameReducer(next, { ...early, now: 1_500_000 }), next)
 })
-test('return keeps arranged cells, original equipment IDs, consumes supplies and queues overflow FIFO', () => {
+test('returns require selection; capacity refusal is atomic and carry-over never blocks days', () => {
   let s = fullWarehouse()
-  for (const [n, kind] of ['sword','shield','potion','potion'].entries()) s = move(s, W(s.slots.findIndex((i) => i?.kind === kind)), H(n))
-  const away = depart(s)
-  const returned = welcome(away)
-  for (const [slot, i] of away.slots.entries()) if (i) assert.equal(returned.slots[slot], i)
-  const issued = currentAdventure(away).issued
-  for (const i of issued) assert.equal(live(returned).some((candidate) => candidate.id === i.id), ITEM_TYPES[i.kind].category !== '消耗品')
-  assert.equal(returned.pendingIncoming.length, 2)
-  const full = gameReducer(returned, { type: 'receive', seed: 4 })
-  assert.deepEqual(full.pendingIncoming, returned.pendingIncoming)
-  let next = gameReducer(full, { type: 'next', adventureId: id(full) })
-  next = move(next, W(0), H(0))
-  const received = gameReducer(next, { type: 'receive', seed: 3 })
-  assert.equal(received.pendingIncoming.length, 1)
-  assert.ok(received.slots.some((i) => i?.id === returned.pendingIncoming[0].id))
-  // A full warehouse still supports returning a prepared item by exchanging it.
-  const exchanged = move(received, H(0), W(0))
-  assert.equal(exchanged.slots[0], next.heroSlots[0]); assert.equal(exchanged.heroSlots[0], received.slots[0])
+  const before = s.slots
+  s = welcome(depart(s))
+  assert.deepEqual(s.slots,before)
+  const item = s.heroSlots[0]!
+  s = gameReducer(s,{type:'intake-toggle',itemId:item.id})
+  s = roundTrip(s)
+  const refused = gameReducer(s,{type:'receive',seed:1})
+  assert.deepEqual(ids(refused),ids(s)); assert.deepEqual(refused.slots,s.slots)
+  assert.match(refused.notice,/空き/)
+  // Make one warehouse space by preparing a different item in a free hero slot.
+  s = move(refused,W(0),H(4))
+  s = gameReducer(s,{type:'receive',seed:1})
+  assert.ok(s.slots.some((i)=>i?.id===item.id)); assert.equal(s.heroSlots[0],null)
+  const once = s
+  assert.equal(gameReducer(s,{type:'receive',seed:2}),once)
+  const hero = s.heroSlots
+  s = gameReducer(s,{type:'next',adventureId:id(s)})
+  assert.deepEqual(s.heroSlots,hero); roundTrip(s)
+})
+test('eight returned equipment and excess loot stay hero-owned across days and saves', () => {
+  let s=createGame()
+  for(let n=0;n<8;n++) s=move(s,W(s.slots.findIndex(i=>i?.kind==='sword'||i?.kind==='shield')),H(n))
+  const away=depart(s), returned=welcome(away)
+  assert.deepEqual(returned.slots,away.slots)
+  assert.deepEqual(returned.heroSlots,currentAdventure(away).issued)
+  assert.equal(returned.pendingIncoming.length,4)
+  s=roundTrip(returned)
+  const item=s.pendingIncoming[0]
+  s=gameReducer(s,{type:'intake-toggle',itemId:item.id})
+  s=roundTrip(s)
+  s=gameReducer(s,{type:'receive',seed:1})
+  assert.equal(s.pendingIncoming.length,3)
+  assert.ok(s.slots.some(i=>i?.id===item.id))
+  s=roundTrip(gameReducer(s,{type:'next',adventureId:id(s)}))
+  s=roundTrip(welcome(depart(s)))
+  assert.equal(s.pendingIncoming.length,7)
+  assert.equal(new Set(ids(s)).size,ids(s).length)
 })
 test('full warehouse incoming placement is pure, reproducible and never replaces occupied cells', () => {
   const s = fullWarehouse(), batch = createReturnBatch('test', [], 1500)
@@ -250,7 +273,9 @@ test('version 2 saves keep all old stock, layout, cargo, timing, pending and his
   const classic: GameState = { ...createGame(), initialItemCount: 96, slots: createLegacyInventory() }
   const prepared = move(classic, W(0), H(0))
   const away = depart(prepared)
-  const returned = welcome(away)
+  const rawReturn = welcome(away)
+  const incoming = placeIncoming(rawReturn.slots,[...rawReturn.pendingIncoming,...rawReturn.heroSlots.filter((i):i is Item=>i!==null)],1)
+  const returned = {...rawReturn,slots:incoming.slots,pendingIncoming:incoming.pendingIncoming,heroSlots:Array(8).fill(null)}
   const next = gameReducer(returned, { type: 'next', adventureId: id(returned) })
   const fromV1 = migrateLegacy(legacyFixtures.nextPartial)
   const nestedLegacy = { ...fromV1, slots: fromV1.slots.slice(0,96) }
@@ -282,4 +307,47 @@ test('new and migrated stock use different immutable baselines without weakening
   const memory = storage(raw)
   assert.equal(loadGame(memory).blocked, true)
   assert.equal(memory.getItem(SAVE_KEY), raw)
+})
+
+test('version 3 returned/pending records migrate without auto-admitting or losing any item',()=>{
+  let s=fullWarehouse(); s=welcome(depart(s))
+  const incoming=placeIncoming(s.slots,[...s.pendingIncoming,...s.heroSlots.filter((i):i is Item=>i!==null)],0)
+  const old={...s,slots:incoming.slots,pendingIncoming:incoming.pendingIncoming,heroSlots:Array(8).fill(null)}
+  const memory=storage(JSON.stringify({version:3,state:old})), loaded=loadGame(memory)
+  assert.equal(loaded.blocked,false); assert.deepEqual(ids(loaded.state),ids(old))
+  assert.deepEqual(loaded.state.pendingIncoming,old.pendingIncoming)
+  assert.deepEqual(loaded.state.intakeSelection,[]); roundTrip(loaded.state)
+})
+test('quick transfer uses first empty slot, explains full/away rejection, and stale events cannot duplicate',()=>{
+  let s=createGame(); const item=s.slots[0]!
+  const quick={type:'quick',from:W(0),itemId:item.id,adventureId:id(s)} as const
+  s=gameReducer(s,quick); assert.equal(s.heroSlots[0],item)
+  assert.deepEqual(ids(gameReducer(s,quick)),ids(s))
+  s=gameReducer(s,{...quick,from:H(0)}); assert.equal(s.slots[0],item)
+  for(let n=0;n<8;n++)s=move(s,W(s.slots.findIndex(Boolean)),H(n))
+  const rejected=gameReducer(s,{...quick,from:W(90),itemId:s.slots[90]!.id})
+  assert.match(rejected.notice,/空き/); assert.deepEqual(ids(rejected),ids(s))
+  const away=depart(s), blocked=gameReducer(away,{...quick,from:H(0),itemId:away.heroSlots[0]!.id})
+  assert.match(blocked.notice,/冒険中/); assert.deepEqual(blocked.heroSlots,away.heroSlots)
+})
+
+test('selection saves reject forged IDs; compacted overflow cannot replay a stale transfer',()=>{
+  let s=createGame()
+  for(let n=0;n<8;n++) s=move(s,W(s.slots.findIndex(i=>i?.kind==='sword'||i?.kind==='shield')),H(n))
+  s=welcome(depart(s))
+  const item=s.pendingIncoming[0]
+  const stale={type:'transfer',from:{area:'sorting',slot:0},to:W(1),itemId:item.id,adventureId:id(s)} as const
+  s=gameReducer(s,stale)
+  unchanged(gameReducer(s,stale),s)
+  roundTrip(s)
+  assert.throws(()=>validateState({...s,intakeSelection:[item.id]}))
+  assert.throws(()=>validateState({...s,intakeSelection:[s.heroSlots[0]!.id,s.heroSlots[0]!.id]}))
+  s=gameReducer(s,{type:'next',adventureId:id(s)})
+  s=depart(s)
+  // Overflow is not on the expedition and remains movable using tap fallback.
+  s=gameReducer(s,{type:'select',at:{area:'sorting',slot:0}})
+  s=gameReducer(s,{type:'move'})
+  assert.equal(s.moving,true)
+  s=gameReducer(s,{type:'select',at:W(2)})
+  assert.ok(s.slots[2]);roundTrip(s)
 })

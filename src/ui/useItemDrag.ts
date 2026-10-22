@@ -8,7 +8,7 @@ type Config = { adventureId: string; canDrop: (s: DragSession, to: Location) => 
 function locationAt(x: number, y: number): Location | null {
   const element = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-area][data-slot]')
   const area = element?.dataset.area
-  return area === 'warehouse' || area === 'hero' ? { area, slot: Number(element!.dataset.slot) } : null
+  return area === 'warehouse' || area === 'hero' || area === 'sorting' ? { area, slot: Number(element!.dataset.slot) } : null
 }
 const same = (a: Location | null, b: Location | null) => a?.area === b?.area && a?.slot === b?.slot
 
@@ -57,7 +57,7 @@ export function useItemDrag(config: Config) {
         if (event.cancelable) event.preventDefault()
         const point = event.changedTouches[0]
         const to = point ? locationAt(point.clientX, point.clientY) : null
-        if (to && configRef.current.canDrop(s, to)) configRef.current.drop(s, to)
+        if (to) configRef.current.drop(s, to)
       }
       cancel()
     }
@@ -127,13 +127,13 @@ export function useItemDrag(config: Config) {
       if (!session.current || session.current.mode !== 'mouse') return
       refresh(event.clientX, event.clientY)
       const to = locationAt(event.clientX, event.clientY)
-      if (to && config.canDrop(session.current, to)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }
+      if (to) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }
     },
     dropMouse: (event: DragEvent) => {
       if (!session.current || session.current.mode !== 'mouse') return
       event.preventDefault()
       const to = locationAt(event.clientX, event.clientY)
-      if (to && config.canDrop(session.current, to)) config.drop(session.current, to)
+      if (to) config.drop(session.current, to)
       cancel()
     },
     startTouch: (event: ReactTouchEvent, from: Location, item: Item) => {
