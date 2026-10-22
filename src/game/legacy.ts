@@ -101,4 +101,3 @@ export function validateLegacyState(value: unknown): LegacyState {
   check(s.pendingIncoming.every((i) => i !== null) && expected.size === 0)
   return { ...s, selectedId: null, moving: false, notice: '倉庫の記録を復元しました。続きから遊べます。' }
 }
-
