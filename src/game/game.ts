@@ -1,11 +1,17 @@
 import { createInventory, ITEM_TYPES, ORDERS } from './data.ts'
 import type { Item, ItemKind } from './data.ts'
+import { createReturnBatch, placeIncoming } from './arrivals.ts'
+import type { ReturnReport } from './arrivals.ts'
 
 export type GameState = Readonly<{
   slots: readonly (Item | null)[]
   orderIndex: number
   delivered: Readonly<Partial<Record<ItemKind, number>>>
   totalDelivered: number
+  issuedByOrder: Readonly<Partial<Record<string, readonly Item[]>>>
+  returnedOrderIds: readonly string[]
+  pendingIncoming: readonly Item[]
+  lastReturn: ReturnReport | null
   selectedId: string | null
   moving: boolean
   notice: string
@@ -17,11 +23,14 @@ export type GameAction =
   | { type: 'cancel' }
   | { type: 'deliver'; itemId: string; orderId: string }
   | { type: 'next'; orderId: string }
+  | { type: 'return'; orderId: string; seed: number }
+  | { type: 'receive'; seed: number }
   | { type: 'reset' }
 
 export function createGame(): GameState {
   return {
     slots: createInventory(), orderIndex: 0, delivered: {}, totalDelivered: 0,
+    issuedByOrder: {}, returnedOrderIds: [], pendingIncoming: [], lastReturn: null,
     selectedId: null, moving: false,
     notice: '品を選んで納品。並べ替えるときは「入れ替える」を押してください。',
   }
@@ -39,6 +48,13 @@ export function isOrderComplete(state: GameState): boolean {
 
 export function isFinished(state: GameState): boolean {
   return state.orderIndex === ORDERS.length - 1 && isOrderComplete(state)
+}
+
+export function getReturnableOrder(state: GameState) {
+  return ORDERS.find((order, index) =>
+    (index < state.orderIndex || (index === state.orderIndex && isOrderComplete(state)))
+    && !state.returnedOrderIds.includes(order.id),
+  ) ?? null
 }
 
 // Every transition validates the current state. UI actions carry the original
@@ -78,6 +94,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         slots: state.slots.map((item) => item?.id === selected.id ? null : item),
         delivered: { ...state.delivered, [selected.kind]: (state.delivered[selected.kind] ?? 0) + 1 },
+        issuedByOrder: { ...state.issuedByOrder, [order.id]: [...(state.issuedByOrder[order.id] ?? []), selected] },
         totalDelivered: state.totalDelivered + 1, selectedId: null, moving: false,
         notice: `${ITEM_TYPES[selected.kind].name}を1個納品しました。`,
       }
@@ -89,6 +106,27 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (action.orderId !== ORDERS[state.orderIndex].id || !isOrderComplete(state) || isFinished(state)) return state
       return { ...state, orderIndex: state.orderIndex + 1, delivered: {}, selectedId: null, moving: false,
         notice: '次の注文が届きました。倉庫の配置はそのままです。' }
+    case 'return': {
+      const order = getReturnableOrder(state)
+      if (!order || order.id !== action.orderId) return state
+      const batch = createReturnBatch(order.id, state.issuedByOrder[order.id] ?? [], action.seed)
+      const arrivals = placeIncoming(state.slots, [...state.pendingIncoming, ...batch.items], action.seed)
+      return {
+        ...state, slots: arrivals.slots, pendingIncoming: arrivals.pendingIncoming,
+        issuedByOrder: { ...state.issuedByOrder, [order.id]: [] },
+        returnedOrderIds: [...state.returnedOrderIds, order.id], lastReturn: batch.report,
+        selectedId: null, moving: false,
+        notice: `勇者が帰還しました。装備${batch.report.equipmentCount}個・戦利品${batch.report.lootCount}個を持ち帰り、${arrivals.placed}個入庫しました。${arrivals.pendingIncoming.length ? `受取待ち${arrivals.pendingIncoming.length}個は保管しています。` : ''}`,
+      }
+    }
+    case 'receive': {
+      if (!state.pendingIncoming.length) return state
+      const arrivals = placeIncoming(state.slots, state.pendingIncoming, action.seed)
+      if (!arrivals.placed) return { ...state, notice: '空き枠がありません。受取待ちの品はそのまま保管しています。' }
+      return { ...state, slots: arrivals.slots, pendingIncoming: arrivals.pendingIncoming,
+        selectedId: null, moving: false,
+        notice: `${arrivals.placed}個を入庫しました。受取待ちは${arrivals.pendingIncoming.length}個です。` }
+    }
     case 'reset':
       return createGame()
   }
