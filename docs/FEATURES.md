@@ -43,7 +43,7 @@
 
 ## 追加合意による既存機能の改修（2026-10-22）
 
-仕様は [GAME_DESIGN.md](GAME_DESIGN.md#inventory-improvements)、観察と決定事項は [FEEDBACK.md](FEEDBACK.md)、実装順序は [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) を参照してください。容量調整は PR #11 でマージ済み。今回の実装 PR で操作・選別・持ち越し・画面配置を改修し、検証記録を IMPLEMENTATION_PLAN.md に追加します。既存チェックと依存 ID を保持し、正式な対応完了は main マージ時です。既存機能の完了と、新仕様への対応完了は別です。F-035 の発見性評価も未完了のままです。
+仕様は [GAME_DESIGN.md](GAME_DESIGN.md#inventory-improvements)、観察と決定事項は [FEEDBACK.md](FEEDBACK.md)、実装順序は [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) を参照してください。容量調整は PR #11 でマージ済み。[PR #13](https://github.com/70nanon/guild-keeper/pull/13) で操作・選別・持ち越し・画面配置を改修し、検証記録を IMPLEMENTATION_PLAN.md に追加します。既存チェックと依存 ID を保持し、正式な対応完了は main マージ時です。既存機能の完了と、新仕様への対応完了は別です。F-035 の発見性評価も未完了のままです。
 
 | 関連機能 | 今回の改修・検証対象 |
 | --- | --- |

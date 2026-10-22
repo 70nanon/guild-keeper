@@ -1,6 +1,6 @@
 # 倉庫操作・帰還品管理の画面確認
 
-main `9cf246f`（容量調整PR #11・仕様整理PR #12マージ済み）を基点にした実装です。ChromiumでPC 1280×800、スマホ390×664、最小320×568を確認。スマホ画像はdevice scale factor 3で記録しています。依存・容量・初期在庫・デプロイ設定は変更しません。
+[PR #13](https://github.com/70nanon/guild-keeper/pull/13)。main `9cf246f`（容量調整PR #11・仕様整理PR #12マージ済み）を基点にした実装です。ChromiumでPC 1280×800、スマホ390×664、最小320×568を確認。スマホ画像はdevice scale factor 3で記録しています。依存・容量・初期在庫・デプロイ設定は変更しません。
 
 - [PCの基本配置](inventory-desktop.png)
 - [スマホの基本配置](inventory-mobile.png)
