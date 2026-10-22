@@ -1,80 +1,5 @@
 import { test, expect } from '@playwright/test'
-import type { Locator } from '@playwright/test'
-
-// Independent, player-visible acceptance scenario: all 13 requested items.
-const requests = [
-  ['sword', 'shield', 'potion', 'potion'],
-  ['staff', 'ether', 'ether', 'herb'],
-  ['helm', 'boots', 'potion', 'herb', 'herb'],
-]
-
-test('pick, rearrange, deliver all orders and replay without dragging', async ({ page, isMobile }, testInfo) => {
-  const activate = (locator: Locator) => isMobile ? locator.tap() : locator.click()
-  const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
-  await page.goto('./')
-  await expect(page.getByRole('heading', { name: 'Guild Keeper' })).toBeVisible()
-  const occupied = page.locator('.item-slot[data-item-id]')
-  await expect(occupied).toHaveCount(96)
-
-  // An incorrect delivery gives feedback and keeps all stock.
-  await activate(page.locator('.item-slot[data-kind="staff"]').first())
-  await activate(page.getByRole('button', { name: '納品する' }))
-  await expect(page.getByRole('status')).toContainText('必要ありません')
-  await expect(occupied).toHaveCount(96)
-  await activate(page.getByRole('button', { name: '選択を解除' }))
-
-  // Swap two physical slots, then verify both identities in the DOM.
-  const first = page.locator('[data-slot="0"]')
-  const second = page.locator('[data-slot="1"]')
-  const firstId = await first.getAttribute('data-item-id')
-  const secondId = await second.getAttribute('data-item-id')
-  await activate(first)
-  await activate(page.getByRole('button', { name: '入れ替える' }))
-  await activate(second)
-  await expect(first).toHaveAttribute('data-item-id', secondId!)
-  await expect(second).toHaveAttribute('data-item-id', firstId!)
-  await expect(occupied).toHaveCount(96)
-  await page.screenshot({ path: `test-results/mvp-${testInfo.project.name}.png` })
-
-  let count = 96
-  for (const [index, kinds] of requests.entries()) {
-    await expect(page.locator('.order-number')).toHaveText(`${index + 1} / 3`)
-    await expect(page.getByRole('button', { name: '次の注文へ' })).toHaveCount(0)
-    for (const kind of kinds) {
-      const item = page.locator(`.item-slot[data-kind="${kind}"]`).first()
-      const deliveredId = await item.getAttribute('data-item-id')
-      await activate(item)
-      await activate(page.getByRole('button', { name: '納品する' }))
-      await expect(occupied).toHaveCount(--count)
-      await expect(page.locator(`[data-item-id="${deliveredId}"]`)).toHaveCount(0)
-      await expect(page.getByRole('button', { name: '納品する' })).toBeDisabled()
-    }
-    await expect(page.locator('.order-progress')).toContainText('注文完了')
-    if (index < requests.length - 1) await activate(page.getByRole('button', { name: '次の注文へ' }))
-  }
-  await expect(occupied).toHaveCount(83)
-  await expect(page.getByRole('status')).toContainText('すべての注文を完了')
-
-  // Move into an empty delivery slot; progress and stock stay intact.
-  const empty = page.locator('.item-slot.is-empty').first()
-  const source = occupied.first()
-  const sourceId = await source.getAttribute('data-item-id')
-  await activate(source)
-  await activate(page.getByRole('button', { name: '入れ替える' }))
-  await activate(empty)
-  await expect(page.locator(`[data-item-id="${sourceId}"]`)).toHaveCount(1)
-  await expect(occupied).toHaveCount(83)
-  await expect(page.getByRole('status')).toHaveText('空き枠へ移動しました。')
-
-  await activate(page.getByRole('button', { name: '最初から遊ぶ' }))
-  await expect(occupied).toHaveCount(96)
-  await expect(page.locator('.order-number')).toHaveText('1 / 3')
-  await expect(first).toHaveAttribute('data-item-id', firstId!)
-  await expect(second).toHaveAttribute('data-item-id', secondId!)
-  await expect(page.locator('.order-progress')).toContainText('0 / 4 個')
-  expect(errors).toEqual([])
-})
+import type { Locator, Page } from '@playwright/test'
 
 test('small portrait screen keeps the order and actions visible with scrollable touch-size slots', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 })
@@ -128,39 +53,118 @@ test('the eight kinds use shared original SVGs in inventory, orders and selectio
 })
 
 
-test('manual return keeps arrangements, cannot duplicate and preserves order progression and replay', async ({ page, isMobile }) => {
+const saveKey = 'guild-keeper.save'
+async function stored(page: Page) {
+  return page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).state, saveKey)
+}
+async function finishOrder(page: Page, activate: (locator: Locator) => Promise<void>) {
+  for (const row of await page.locator('.order-lines li').all()) {
+    const kind = await row.locator('svg').getAttribute('data-glyph')
+    const counts = (await row.locator('.quantity').innerText()).match(/(\d+)\s*\/\s*(\d+)/)!
+    for (let i = Number(counts[1]); i < Number(counts[2]); i++) {
+      await activate(page.locator(`.item-slot[data-kind="${kind}"]`).first())
+      await activate(page.getByRole('button', { name: '納品する', exact: true }))
+    }
+  }
+}
+
+test('continuous daily play preserves rearrangement, pending receipts and ledgers across reloads', async ({ page, isMobile }, testInfo) => {
   const activate = (locator: Locator) => isMobile ? locator.tap() : locator.click()
-  // A fixed entropy input exercises real overflow, without putting a test hook in the app.
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
   await page.addInitScript(() => {
-    Object.defineProperty(crypto, 'getRandomValues', { value: (array: Uint32Array) => { array.fill(1500); return array } })
+    Object.defineProperty(crypto, 'getRandomValues', { value: (a: Uint32Array) => { a.fill(1500); return a } })
   })
   if (isMobile) await page.setViewportSize({ width: 320, height: 568 })
   await page.goto('./')
-  await expect(page.getByRole('button', { name: '勇者の帰還', exact: true })).toHaveCount(0)
-  for (const kind of requests[0]) {
-    await activate(page.locator(`.item-slot[data-kind="${kind}"]`).first())
-    await activate(page.getByRole('button', { name: '納品する' }))
-  }
   const occupied = page.locator('.item-slot[data-item-id]')
-  // Rearrange before returning; each occupied slot must remain exactly there.
+  await expect(occupied).toHaveCount(96)
+  await expect(page.locator('.order-number')).toHaveText('1日目')
+  await expect(page.getByRole('button', { name: '翌日へ' })).toHaveCount(0)
+
+  // Wrong delivery never consumes stock.
+  await activate(page.locator('.item-slot[data-kind="staff"]').first())
+  await activate(page.getByRole('button', { name: '納品する' }))
+  await expect(page.getByRole('status')).toContainText('必要ありません')
+  await expect(occupied).toHaveCount(96)
+  await activate(page.getByRole('button', { name: '選択を解除' }))
+
+  const first = page.locator('[data-slot="0"]')
+  const second = page.locator('[data-slot="1"]')
+  const firstId = await first.getAttribute('data-item-id')
+  const secondId = await second.getAttribute('data-item-id')
+  await activate(first)
+  await activate(page.getByRole('button', { name: '入れ替える' }))
+  await activate(second)
+  await expect(first).toHaveAttribute('data-item-id', secondId!)
+  await expect(second).toHaveAttribute('data-item-id', firstId!)
+
+  // Partial issue survives reload; no item can be delivered twice.
+  await activate(page.locator('.item-slot[data-kind="sword"]').first())
+  await activate(page.getByRole('button', { name: '納品する' }))
+  await expect(occupied).toHaveCount(95)
+  const partial = await stored(page)
+  await page.reload()
+  await expect(occupied).toHaveCount(95)
+  expect((await stored(page)).issuedByOrder).toEqual(partial.issuedByOrder)
+  await expect(page.locator('.order-progress')).toContainText('1 / 4 個')
+
+  // Move to an empty slot using taps only.
+  const target = page.locator('.item-slot.is-empty').first()
   const source = occupied.first()
-  const target = occupied.nth(1)
+  const sourceId = await source.getAttribute('data-item-id')
+  const targetSlot = await target.getAttribute('data-slot')
   await activate(source)
   await activate(page.getByRole('button', { name: '入れ替える' }))
   await activate(target)
-  const before = await occupied.evaluateAll((nodes) => nodes.map((e) => ({slot:e.getAttribute('data-slot'),id:e.getAttribute('data-item-id')})))
-  await activate(page.getByRole('button', { name: '勇者の帰還', exact: true }))
-  await expect(page.locator('.return-comment')).toBeVisible()
-  await expect(page.locator('.return-report')).toContainText('返却 2個・消耗 2個')
-  await expect(page.getByRole('button', { name: '勇者の帰還', exact: true })).toHaveCount(0)
-  await expect(page.locator('.order-number')).toHaveText('1 / 3')
-  await expect(occupied).toHaveCount(96)
-  await expect(page.locator('.pending-arrivals')).toContainText('2個')
-  await activate(page.getByRole('button', { name: '受取待ちを入庫' }))
-  await expect(page.getByRole('status')).toContainText('空き枠がありません')
-  await expect(occupied).toHaveCount(96)
-  await page.locator('.return-comment').scrollIntoViewIfNeeded()
-  await page.screenshot({ path: `test-results/return-${isMobile ? 'mobile' : 'desktop'}.png` })
+  await expect(page.locator(`[data-slot="${targetSlot}"]`)).toHaveAttribute('data-item-id', sourceId!)
+
+  for (let day = 1; day <= 4; day++) {
+    await expect(page.locator('.order-number')).toHaveText(`${day}日目`)
+    await finishOrder(page, activate)
+    await expect(page.locator('.order-progress')).toContainText('注文完了')
+    await expect(page.getByRole('button', { name: '翌日へ' })).toHaveCount(0)
+    const beforeReturn = await stored(page)
+    await page.reload()
+    expect((await stored(page)).issuedByOrder).toEqual(beforeReturn.issuedByOrder)
+    await activate(page.getByRole('button', { name: '勇者の帰還', exact: true }))
+    await expect(page.locator('.return-comment')).toBeVisible()
+    const returned = await stored(page)
+    expect(returned.returnHistory).toHaveLength(day)
+    for (let slot = 0; slot < 96; slot++) {
+      if (beforeReturn.slots[slot]) expect(returned.slots[slot]).toEqual(beforeReturn.slots[slot])
+    }
+    if (day === 1) {
+      expect(returned.pendingIncoming).toHaveLength(2)
+      await activate(page.getByRole('button', { name: '受取待ちを入庫' }))
+      await expect(page.getByRole('status')).toContainText('空き枠がありません')
+      await page.screenshot({ path: `test-results/daily-${testInfo.project.name}.png` })
+    }
+    await page.reload()
+    const restored = await stored(page)
+    expect(restored.slots).toEqual(returned.slots)
+    expect(restored.pendingIncoming).toEqual(returned.pendingIncoming)
+    expect(restored.returnHistory).toEqual(returned.returnHistory)
+    await expect(page.getByRole('button', { name: '勇者の帰還', exact: true })).toHaveCount(0)
+    await activate(page.getByRole('button', { name: '翌日へ' }))
+    await expect(page.locator('.order-number')).toHaveText(`${day + 1}日目`)
+    const next = await stored(page)
+    expect(next.slots).toEqual(returned.slots)
+    expect(next.pendingIncoming).toEqual(returned.pendingIncoming)
+    expect(next.returnHistory).toEqual(returned.returnHistory)
+    if (next.pendingIncoming.length) {
+      // A new delivery makes room; receiving keeps the original FIFO identity.
+      const row = page.locator('.order-lines li').first()
+      const kind = await row.locator('svg').getAttribute('data-glyph')
+      await activate(page.locator(`.item-slot[data-kind="${kind}"]`).first())
+      await activate(page.getByRole('button', { name: '納品する' }))
+      await activate(page.getByRole('button', { name: '受取待ちを入庫' }))
+      const received = await stored(page)
+      expect(received.slots.some((item: { id: string } | null) => item?.id === next.pendingIncoming[0].id)).toBe(true)
+    }
+    await page.reload()
+    await expect(page.locator('.order-number')).toHaveText(`${day + 1}日目`)
+  }
   const layout = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > innerWidth,
     pageOverflow: document.documentElement.scrollHeight > innerHeight,
@@ -169,23 +173,43 @@ test('manual return keeps arrangements, cannot duplicate and preserves order pro
   expect(layout.overflow).toBe(false)
   expect(layout.pageOverflow).toBe(false)
   expect(layout.inventoryHeight).toBeGreaterThanOrEqual(64)
-  for (const item of before) await expect(page.locator(`[data-slot="${item.slot}"]`)).toHaveAttribute('data-item-id', item.id!)
-  const allIds = await occupied.evaluateAll((nodes) => nodes.map((e) => e.getAttribute('data-item-id')))
-  expect(new Set(allIds).size).toBe(96)
-  for (let index = 1; index < requests.length; index++) {
-    await activate(page.getByRole('button', { name: '次の注文へ' }))
-    for (const kind of requests[index]) {
-      await activate(page.locator(`.item-slot[data-kind="${kind}"]`).first())
-      await activate(page.getByRole('button', { name: '納品する' }))
-      if (await page.locator('.pending-arrivals').count()) {
-        await activate(page.getByRole('button', { name: '受取待ちを入庫' }))
-      }
-    }
-  }
-  // The unreturned older order is still available even after the final order.
-  await expect(page.locator('.return-caption')).toContainText('森を抜けるために')
-  await activate(page.getByRole('button', { name: '最初から遊ぶ' }))
+
+  // Reset is destructive only after confirmation, and persists the fresh start.
+  page.once('dialog', (dialog) => dialog.dismiss())
+  await activate(page.getByRole('button', { name: '記録を初期化', exact: true }))
+  await expect(page.locator('.order-number')).toHaveText('5日目')
+  page.once('dialog', (dialog) => dialog.accept())
+  await activate(page.getByRole('button', { name: '記録を初期化', exact: true }))
+  await page.reload()
+  await expect(page.locator('.order-number')).toHaveText('1日目')
   await expect(occupied).toHaveCount(96)
-  await expect(page.locator('.return-panel')).toHaveCount(0)
-  await expect(page.locator('.order-number')).toHaveText('1 / 3')
+  expect((await stored(page)).returnHistory).toHaveLength(0)
+  expect(errors).toEqual([])
+})
+
+for (const [name, raw] of [['破損', '{broken'], ['非対応バージョン', '{"version":999}']]) {
+  test(`${name}のセーブを自動上書きせず初期化を確認する`, async ({ page }) => {
+    await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), { key: saveKey, value: raw })
+    await page.goto('./')
+    await expect(page.getByRole('alert')).toContainText('自動保存を停止')
+    expect(await page.evaluate((key) => localStorage.getItem(key), saveKey)).toBe(raw)
+    page.once('dialog', (dialog) => dialog.dismiss())
+    await page.getByRole('button', { name: '記録を初期化して始める' }).click()
+    expect(await page.evaluate((key) => localStorage.getItem(key), saveKey)).toBe(raw)
+    page.once('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: '記録を初期化して始める' }).click()
+    await expect(page.locator('.order-number')).toHaveText('1日目')
+    expect((await stored(page)).slots).toHaveLength(96)
+  })
+}
+
+test('storage quota failure warns without blocking play or discarding the previous save', async ({ page }) => {
+  await page.goto('./')
+  const previous = await stored(page)
+  await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException('Quota', 'QuotaExceededError') } })
+  await page.locator('.item-slot[data-kind="sword"]').first().click()
+  await page.getByRole('button', { name: '納品する' }).click()
+  await expect(page.locator('.save-message')).toContainText('未保存の進行が失われます')
+  await expect(page.locator('.item-slot[data-item-id]')).toHaveCount(95)
+  expect((await stored(page)).slots).toEqual(previous.slots)
 })

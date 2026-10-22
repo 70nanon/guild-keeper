@@ -123,3 +123,10 @@ h2 { font-size: 18px; font-weight: 600; }
 @media (max-width: 760px) {
   .order-panel { max-height: 42svh; }
 }
+
+.save-tools { margin-top: 12px; border-top: 1px solid #b8a780; padding-top: 8px; }
+.save-message { font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.save-tools button { margin-top: 5px; width: 100%; }
+.recovery-panel { max-width: 600px; margin: 8vh auto; padding: 24px; background: #eee3c3; color: #3c3021; }
+.recovery-panel p { margin: 16px 0; line-height: 1.8; }
+.recovery-panel button { margin: 8px; }

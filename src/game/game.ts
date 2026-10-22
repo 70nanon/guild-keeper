@@ -1,10 +1,13 @@
-import { createInventory, ITEM_TYPES, ORDERS } from './data.ts'
-import type { Item, ItemKind } from './data.ts'
+import { createInventory, ITEM_TYPES, INITIAL_ORDER } from './data.ts'
+import type { Item, ItemKind, Order } from './data.ts'
 import { createReturnBatch, placeIncoming } from './arrivals.ts'
 import type { ReturnReport } from './arrivals.ts'
+import { createDailyOrder } from './orders.ts'
 
 export type GameState = Readonly<{
   slots: readonly (Item | null)[]
+  orders: readonly Order[]
+  returnHistory: readonly Readonly<{ items: readonly Item[]; report: ReturnReport }>[]
   orderIndex: number
   delivered: Readonly<Partial<Record<ItemKind, number>>>
   totalDelivered: number
@@ -22,14 +25,14 @@ export type GameAction =
   | { type: 'move' }
   | { type: 'cancel' }
   | { type: 'deliver'; itemId: string; orderId: string }
-  | { type: 'next'; orderId: string }
+  | { type: 'next'; orderId: string; seed: number }
   | { type: 'return'; orderId: string; seed: number }
   | { type: 'receive'; seed: number }
   | { type: 'reset' }
 
 export function createGame(): GameState {
   return {
-    slots: createInventory(), orderIndex: 0, delivered: {}, totalDelivered: 0,
+    slots: createInventory(), orders: [INITIAL_ORDER], returnHistory: [], orderIndex: 0, delivered: {}, totalDelivered: 0,
     issuedByOrder: {}, returnedOrderIds: [], pendingIncoming: [], lastReturn: null,
     selectedId: null, moving: false,
     notice: '品を選んで納品。並べ替えるときは「入れ替える」を押してください。',
@@ -41,20 +44,18 @@ export function getSelectedItem(state: GameState) {
 }
 
 export function isOrderComplete(state: GameState): boolean {
-  return ORDERS[state.orderIndex].lines.every(
+  return state.orders[state.orderIndex].lines.every(
     ({ kind, quantity }) => (state.delivered[kind] ?? 0) === quantity,
   )
 }
 
-export function isFinished(state: GameState): boolean {
-  return state.orderIndex === ORDERS.length - 1 && isOrderComplete(state)
+export function canAdvanceDay(state: GameState): boolean {
+  return isOrderComplete(state) && state.returnedOrderIds.includes(state.orders[state.orderIndex].id)
 }
 
 export function getReturnableOrder(state: GameState) {
-  return ORDERS.find((order, index) =>
-    (index < state.orderIndex || (index === state.orderIndex && isOrderComplete(state)))
-    && !state.returnedOrderIds.includes(order.id),
-  ) ?? null
+  const order = state.orders[state.orderIndex]
+  return isOrderComplete(state) && !state.returnedOrderIds.includes(order.id) ? order : null
 }
 
 // Every transition validates the current state. UI actions carry the original
@@ -83,7 +84,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'cancel':
       return { ...state, selectedId: null, moving: false, notice: '選択を解除しました。' }
     case 'deliver': {
-      const order = ORDERS[state.orderIndex]
+      const order = state.orders[state.orderIndex]
       const selected = getSelectedItem(state)
       if (action.orderId !== order.id || !selected || selected.id !== action.itemId || state.moving || isOrderComplete(state)) return state
       const line = order.lines.find(({ kind }) => kind === selected.kind)
@@ -99,13 +100,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         notice: `${ITEM_TYPES[selected.kind].name}を1個納品しました。`,
       }
       return isOrderComplete(next)
-        ? { ...next, notice: isFinished(next) ? 'すべての注文を完了しました。お疲れさま！' : '注文を完了しました。次の注文へ進めます。' }
+        ? { ...next, notice: '注文を完了しました。勇者の帰還を待ちましょう。' }
         : next
     }
     case 'next':
-      if (action.orderId !== ORDERS[state.orderIndex].id || !isOrderComplete(state) || isFinished(state)) return state
-      return { ...state, orderIndex: state.orderIndex + 1, delivered: {}, selectedId: null, moving: false,
-        notice: '次の注文が届きました。倉庫の配置はそのままです。' }
+      if (action.orderId !== state.orders[state.orderIndex].id || !canAdvanceDay(state)) return state
+      if (!state.slots.some(Boolean)) return { ...state, notice: '受取待ちを入庫してから翌日へ進んでください。' }
+      return { ...state, orders: [...state.orders, createDailyOrder(state.orderIndex + 2, state.slots, action.seed)], orderIndex: state.orderIndex + 1, delivered: {}, selectedId: null, moving: false,
+        notice: '翌日になりました。新しい注文です。倉庫の配置はそのままです。' }
     case 'return': {
       const order = getReturnableOrder(state)
       if (!order || order.id !== action.orderId) return state
@@ -113,7 +115,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const arrivals = placeIncoming(state.slots, [...state.pendingIncoming, ...batch.items], action.seed)
       return {
         ...state, slots: arrivals.slots, pendingIncoming: arrivals.pendingIncoming,
-        issuedByOrder: { ...state.issuedByOrder, [order.id]: [] },
+        returnHistory: [...state.returnHistory, batch],
         returnedOrderIds: [...state.returnedOrderIds, order.id], lastReturn: batch.report,
         selectedId: null, moving: false,
         notice: `勇者が帰還しました。装備${batch.report.equipmentCount}個・戦利品${batch.report.lootCount}個を持ち帰り、${arrivals.placed}個入庫しました。${arrivals.pendingIncoming.length ? `受取待ち${arrivals.pendingIncoming.length}個は保管しています。` : ''}`,
