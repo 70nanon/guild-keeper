@@ -135,7 +135,7 @@ function App() {
         </details>
       </aside>
       <section className="warehouse" aria-labelledby="warehouse-title">
-        <div className="warehouse-heading"><h2 id="warehouse-title">はじまりの倉庫</h2><span className="stock-count">在庫 <strong>{stock}</strong> / 96 枠</span></div>
+        <div className="warehouse-heading"><h2 id="warehouse-title">はじまりの倉庫</h2><span className="stock-count">在庫 <strong>{stock}</strong> / {state.slots.length} 枠</span></div>
         <div className="inventory-scroll" data-scroll-area role="region" aria-label="倉庫のアイテム一覧" tabIndex={0}>
           <div className="inventory-grid">{cells(state.slots, 'warehouse')}</div>
         </div>
