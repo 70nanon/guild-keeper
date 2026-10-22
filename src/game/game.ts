@@ -1,4 +1,4 @@
-import { createInventory, ITEM_TYPES } from './data.ts'
+import { createInventory, INITIAL_ITEM_COUNT, ITEM_TYPES } from './data.ts'
 import type { Item } from './data.ts'
 import { createReturnBatch, placeIncoming } from './arrivals.ts'
 import type { LegacyState } from './legacy.ts'
@@ -14,6 +14,7 @@ export type Adventure = Readonly<{
   returned: ReturnBatch | null
 }>
 export type GameState = Readonly<{
+  initialItemCount: 48 | 96
   slots: readonly (Item | null)[]
   heroSlots: readonly (Item | null)[]
   day: number
@@ -43,7 +44,7 @@ export function createAdventure(day: number): Adventure {
   return { id: `day-${day}`, ...plans[(day - 1) % plans.length], issued: [], timing: null, returned: null }
 }
 export function createGame(): GameState {
-  return { slots: createInventory(), heroSlots: Array(HERO_CAPACITY).fill(null), day: 1,
+  return { initialItemCount: INITIAL_ITEM_COUNT, slots: createInventory(), heroSlots: Array(HERO_CAPACITY).fill(null), day: 1,
     adventures: [createAdventure(1)], pendingIncoming: [], legacy: null, selection: null, moving: false,
     notice: 'ドラッグで移動・交換。タップでも品を選んで支給・整理できます。' }
 }

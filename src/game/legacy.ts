@@ -1,5 +1,5 @@
 // Version 1 validation is retained for lossless migration; do not relax its ledger checks.
-import { createInventory, ITEM_TYPES, INITIAL_ORDER } from './data.ts'
+import { createLegacyInventory, ITEM_TYPES, INITIAL_ORDER } from './data.ts'
 import type { Item, ItemKind, Order } from './data.ts'
 import type { ReturnReport } from './arrivals.ts'
 export type LegacyState = Readonly<{
@@ -45,7 +45,7 @@ export function validateLegacyState(value: unknown): LegacyState {
     && s.orders.length === s.orderIndex + 1 && record(s.issuedByOrder)
     && Array.isArray(s.returnHistory) && Array.isArray(s.returnedOrderIds) && record(s.delivered))
   check(s.returnHistory.length === s.orderIndex || s.returnHistory.length === s.orderIndex + 1)
-  const expected = new Map(createInventory().filter((i): i is Item => i !== null).map((i) => [i.id, i.kind]))
+  const expected = new Map(createLegacyInventory().filter((i): i is Item => i !== null).map((i) => [i.id, i.kind]))
   let total = 0
   for (const [index, entry] of s.orders.entries()) {
     order(entry)

@@ -1,4 +1,4 @@
-import { createInventory, ITEM_TYPES } from './data.ts'
+import { createInventory, createLegacyInventory, ITEM_TYPES, WAREHOUSE_CAPACITY } from './data.ts'
 import type { Item } from './data.ts'
 import { createGame, createAdventure, currentAdventure, HERO_CAPACITY, inheritedReturn } from './game.ts'
 import type { GameState, Adventure, ReturnBatch } from './game.ts'
@@ -7,7 +7,7 @@ import type { LegacyState } from './legacy.ts'
 
 export const SAVE_KEY = 'guild-keeper.save'
 export const SAVE_BACKUP_KEY = 'guild-keeper.save.v1-backup'
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 export type SaveStorage = Pick<Storage, 'getItem' | 'setItem'>
 export type LoadedGame = { state: GameState; blocked: boolean; message: string }
 function check(condition: unknown): asserts condition { if (!condition) throw new Error('Invalid save') }
@@ -27,7 +27,7 @@ export function migrateLegacy(value: unknown): GameState {
   const day = legacy.orderIndex + 1
   const a = createAdventure(day)
   const issued = legacy.returnedOrderIds.includes(a.id) ? [] : legacy.issuedByOrder[a.id] ?? []
-  return { ...createGame(), slots: legacy.slots, day, adventures: [a], legacy,
+  return { ...createGame(), initialItemCount: 96, slots: [...legacy.slots, ...Array(WAREHOUSE_CAPACITY - legacy.slots.length).fill(null)], day, adventures: [a], legacy,
     heroSlots: Array.from({ length: HERO_CAPACITY }, (_, i) => issued[i] ?? null),
     pendingIncoming: [...legacy.pendingIncoming, ...issued.slice(HERO_CAPACITY)],
     notice: issued.length ? '旧記録を移行しました。未帰還の支給品は準備欄へ戻しました。持ち物を確認して出発できます。'
@@ -35,16 +35,19 @@ export function migrateLegacy(value: unknown): GameState {
 }
 // Reconstruct expected ownership from the initial stock / validated v1 baseline.
 // Historical entries are records, not a second physical inventory.
-export function validateState(value: unknown): GameState {
+export function validateState(value: unknown, version: 2 | 3 = 3): GameState {
   check(object(value))
   const s = value as unknown as GameState
-  check(Array.isArray(s.slots) && s.slots.length === 96 && Array.isArray(s.heroSlots) && s.heroSlots.length === HERO_CAPACITY
+  check(Array.isArray(s.slots) && s.slots.length === (version === 2 ? 96 : WAREHOUSE_CAPACITY) && Array.isArray(s.heroSlots) && s.heroSlots.length === HERO_CAPACITY
     && Array.isArray(s.pendingIncoming) && Array.isArray(s.adventures) && s.adventures.length > 0
     && Number.isSafeInteger(s.day) && s.day >= 1)
+  const initialItemCount = version === 2 ? 96 : s.initialItemCount
+  check(initialItemCount === 48 || initialItemCount === 96)
   const legacy = s.legacy === null ? null : validateLegacyState(s.legacy)
+  if (legacy) check(initialItemCount === 96)
   const baseDay = legacy ? legacy.orderIndex + 1 : 1
   check(s.day === baseDay + s.adventures.length - 1)
-  const baseline = legacy ? legacyOwned(legacy) : createInventory().filter((i): i is Item => i !== null)
+  const baseline = legacy ? legacyOwned(legacy) : (initialItemCount === 96 ? createLegacyInventory() : createInventory()).filter((i): i is Item => i !== null)
   const expected = new Map(baseline.map((i) => [i.id, i.kind]))
   check(expected.size === baseline.length)
   for (const [index, entry] of s.adventures.entries()) {
@@ -90,7 +93,7 @@ export function validateState(value: unknown): GameState {
     item(live); check(expected.get(live.id) === live.kind); expected.delete(live.id)
   }
   check(expected.size === 0 && s.pendingIncoming.every((i) => i !== null))
-  return { ...s, legacy, selection: null, moving: false, notice: '倉庫と冒険の記録を復元しました。' }
+  return { ...s, initialItemCount, slots: version === 2 ? [...s.slots, ...Array(WAREHOUSE_CAPACITY - s.slots.length).fill(null)] : s.slots, legacy, selection: null, moving: false, notice: '倉庫と冒険の記録を復元しました。' }
 }
 export function loadGame(storage: SaveStorage): LoadedGame {
   let raw: string | null
@@ -103,11 +106,12 @@ export function loadGame(storage: SaveStorage): LoadedGame {
     check(object(data))
     if (data.version === 1) {
       const migrated = migrateLegacy(data.state)
-      // Backup must succeed before the UI may replace version 1 with version 2.
+      // Backup must succeed before replacing the version 1 record.
       storage.setItem(SAVE_BACKUP_KEY, raw)
       validateState(migrated)
       return { state: migrated, blocked: false, message: '' }
     }
+    if (data.version === 2) return { state: validateState(data.state, 2), blocked: false, message: '' }
     if (data.version !== SAVE_VERSION) return { state: createGame(), blocked: true,
       message: '非対応のセーブ形式です。元の記録を保護し、自動保存を停止しました。' }
     return { state: validateState(data.state), blocked: false, message: '' }
