@@ -1,0 +1,33 @@
+.app-shell {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 clamp(1rem, 5vw, 5rem);
+  background: radial-gradient(ellipse at 50% 35%, #28413d 0%, transparent 65%);
+}
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid #d2b77e33;
+}
+.brand { font-family: Georgia, serif; font-size: 1.4rem; letter-spacing: .15em; }
+.brand span { color: #d2b77e; margin-left: .5rem; }
+.status { border: 1px solid #d2b77e66; border-radius: 2rem; padding: .4rem .9rem; font-size: .75rem; color: #d2b77e; }
+main { flex: 1; display: grid; place-items: center; padding: 3rem 0; }
+.game-screen { width: 100%; max-width: 52rem; text-align: center; padding: clamp(1rem, 5vw, 4rem); }
+.crest { color: #d2b77e; font-size: 4rem; margin-bottom: 1.5rem; }
+.eyebrow { font-size: .8rem; letter-spacing: .15em; color: #c5cbbd; line-height: 1.8; }
+h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: clamp(2.8rem, 9vw, 6rem); line-height: 1.15; margin: 1rem 0; letter-spacing: -.035em; }
+.description { color: #c5cbbd; line-height: 1.8; }
+.notice { border-top: 1px solid #d2b77e44; margin: 3rem auto 0; padding-top: 2rem; max-width: 24rem; }
+.notice h2 { color: #d2b77e; font-size: .95rem; font-weight: 500; margin-bottom: .75rem; }
+.notice p { color: #c5cbbd; font-size: .85rem; line-height: 1.8; }
+footer { text-align: center; padding: 1.5rem 0; color: #a6b5ae; font-size: .7rem; letter-spacing: .08em; }
+@media (max-width: 480px) {
+  .site-header { padding: 1rem 0; }
+  main { padding: 2rem 0; }
+  .eyebrow { letter-spacing: .04em; }
+  .notice { margin-top: 2rem; }
+}
