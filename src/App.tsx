@@ -1,8 +1,12 @@
 import { useReducer } from 'react'
 import { ITEM_TYPES, ORDERS } from './game/data'
-import { createGame, gameReducer, getSelectedItem, isFinished, isOrderComplete } from './game/game'
+import { createGame, gameReducer, getSelectedItem, getReturnableOrder, isFinished, isOrderComplete } from './game/game'
 import { ItemIcon } from './ui/ItemIcon'
 import './App.css'
+
+function randomSeed() {
+  return crypto.getRandomValues(new Uint32Array(1))[0]
+}
 
 function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createGame)
@@ -10,6 +14,7 @@ function App() {
   const selected = getSelectedItem(state)
   const complete = isOrderComplete(state)
   const finished = isFinished(state)
+  const returnable = getReturnableOrder(state)
   const remaining = state.slots.filter(Boolean).length
   const fulfilled = order.lines.reduce((sum, line) => sum + (state.delivered[line.kind] ?? 0), 0)
   const requested = order.lines.reduce((sum, line) => sum + line.quantity, 0)
@@ -49,6 +54,22 @@ function App() {
                 <button className="primary-button" onClick={() => dispatch({ type: 'next', orderId: order.id })}>次の注文へ <span aria-hidden="true">→</span></button>
               )}
             </div>
+          )}
+          {(returnable || state.lastReturn) && (
+            <section className="return-panel" aria-label="勇者の帰還と入荷">
+              {returnable && <>
+                <p className="return-caption">「{returnable.title}」の帰還待ち</p>
+                <button className="secondary-button" onClick={() => dispatch({ type: 'return', orderId: returnable.id, seed: randomSeed() })}>勇者の帰還</button>
+              </>}
+              {state.lastReturn && <div className="return-report">
+                <p className="return-comment">「{state.lastReturn.comment}」</p>
+                <p>返却 {state.lastReturn.equipmentCount}個・消耗 {state.lastReturn.consumedCount}個・戦利品 {state.lastReturn.lootCount}個</p>
+              </div>}
+              {state.pendingIncoming.length > 0 && <div className="pending-arrivals">
+                <p>受取待ち <strong>{state.pendingIncoming.length}個</strong>（空きができるまで保管）</p>
+                <button className="secondary-button" onClick={() => dispatch({ type: 'receive', seed: randomSeed() })}>受取待ちを入庫</button>
+              </div>}
+            </section>
           )}
           <p className="order-hint">品を選ぶ → 納品する<br />並べ替えは「入れ替える」→ 移動先をタップ</p>
         </aside>

@@ -126,3 +126,66 @@ test('the eight kinds use shared original SVGs in inventory, orders and selectio
   }
   await expect(page.locator('svg text')).toHaveCount(0)
 })
+
+
+test('manual return keeps arrangements, cannot duplicate and preserves order progression and replay', async ({ page, isMobile }) => {
+  const activate = (locator: Locator) => isMobile ? locator.tap() : locator.click()
+  // A fixed entropy input exercises real overflow, without putting a test hook in the app.
+  await page.addInitScript(() => {
+    Object.defineProperty(crypto, 'getRandomValues', { value: (array: Uint32Array) => { array.fill(1500); return array } })
+  })
+  if (isMobile) await page.setViewportSize({ width: 320, height: 568 })
+  await page.goto('./')
+  await expect(page.getByRole('button', { name: '勇者の帰還', exact: true })).toHaveCount(0)
+  for (const kind of requests[0]) {
+    await activate(page.locator(`.item-slot[data-kind="${kind}"]`).first())
+    await activate(page.getByRole('button', { name: '納品する' }))
+  }
+  const occupied = page.locator('.item-slot[data-item-id]')
+  // Rearrange before returning; each occupied slot must remain exactly there.
+  const source = occupied.first()
+  const target = occupied.nth(1)
+  await activate(source)
+  await activate(page.getByRole('button', { name: '入れ替える' }))
+  await activate(target)
+  const before = await occupied.evaluateAll((nodes) => nodes.map((e) => ({slot:e.getAttribute('data-slot'),id:e.getAttribute('data-item-id')})))
+  await activate(page.getByRole('button', { name: '勇者の帰還', exact: true }))
+  await expect(page.locator('.return-comment')).toBeVisible()
+  await expect(page.locator('.return-report')).toContainText('返却 2個・消耗 2個')
+  await expect(page.getByRole('button', { name: '勇者の帰還', exact: true })).toHaveCount(0)
+  await expect(page.locator('.order-number')).toHaveText('1 / 3')
+  await expect(occupied).toHaveCount(96)
+  await expect(page.locator('.pending-arrivals')).toContainText('2個')
+  await activate(page.getByRole('button', { name: '受取待ちを入庫' }))
+  await expect(page.getByRole('status')).toContainText('空き枠がありません')
+  await expect(occupied).toHaveCount(96)
+  await page.locator('.return-comment').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `test-results/return-${isMobile ? 'mobile' : 'desktop'}.png` })
+  const layout = await page.evaluate(() => ({
+    overflow: document.documentElement.scrollWidth > innerWidth,
+    pageOverflow: document.documentElement.scrollHeight > innerHeight,
+    inventoryHeight: document.querySelector('.inventory-scroll')!.clientHeight,
+  }))
+  expect(layout.overflow).toBe(false)
+  expect(layout.pageOverflow).toBe(false)
+  expect(layout.inventoryHeight).toBeGreaterThanOrEqual(64)
+  for (const item of before) await expect(page.locator(`[data-slot="${item.slot}"]`)).toHaveAttribute('data-item-id', item.id!)
+  const allIds = await occupied.evaluateAll((nodes) => nodes.map((e) => e.getAttribute('data-item-id')))
+  expect(new Set(allIds).size).toBe(96)
+  for (let index = 1; index < requests.length; index++) {
+    await activate(page.getByRole('button', { name: '次の注文へ' }))
+    for (const kind of requests[index]) {
+      await activate(page.locator(`.item-slot[data-kind="${kind}"]`).first())
+      await activate(page.getByRole('button', { name: '納品する' }))
+      if (await page.locator('.pending-arrivals').count()) {
+        await activate(page.getByRole('button', { name: '受取待ちを入庫' }))
+      }
+    }
+  }
+  // The unreturned older order is still available even after the final order.
+  await expect(page.locator('.return-caption')).toContainText('森を抜けるために')
+  await activate(page.getByRole('button', { name: '最初から遊ぶ' }))
+  await expect(occupied).toHaveCount(96)
+  await expect(page.locator('.return-panel')).toHaveCount(0)
+  await expect(page.locator('.order-number')).toHaveText('1 / 3')
+})

@@ -1,9 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createInventory, ITEM_TYPES, ORDERS } from '../src/game/data.ts'
-import { createGame, gameReducer, isOrderComplete, isFinished } from '../src/game/game.ts'
+import { createGame, gameReducer, isOrderComplete, isFinished, getReturnableOrder } from '../src/game/game.ts'
 import type { GameState } from '../src/game/game.ts'
 import type { ItemKind } from '../src/game/data.ts'
+import { createReturnBatch, placeIncoming } from '../src/game/arrivals.ts'
 
 const ids = (state: GameState) => state.slots.flatMap((item) => item ? [item.id] : []).sort()
 function deliverKind(state: GameState, kind: ItemKind): GameState {
@@ -124,4 +125,113 @@ test('all orders are solvable after rearrangement; reset restores the whole init
   assert.equal(state.totalDelivered, 13)
   assert.equal(gameReducer(state, { type: 'next', orderId: ORDERS.at(-1)!.id }), state)
   assert.deepEqual(gameReducer(state, { type: 'reset' }), initial)
+})
+
+
+test('return is available only for completed orders and records each expedition exactly once', () => {
+  const initial = createGame()
+  const action = { type: 'return', orderId: ORDERS[0].id, seed: 1500 } as const
+  assert.equal(getReturnableOrder(initial), null)
+  assert.equal(gameReducer(initial, action), initial)
+  const complete = fulfill(initial)
+  assert.equal(gameReducer(complete, { ...action, orderId: ORDERS[1].id }), complete)
+  const returned = gameReducer(complete, action)
+  assert.deepEqual(returned.returnedOrderIds, [ORDERS[0].id])
+  assert.equal(gameReducer(returned, action), returned)
+  assert.equal(getReturnableOrder(returned), null)
+  assert.equal(returned.orderIndex, 0)
+  assert.deepEqual(returned.delivered, complete.delivered)
+})
+
+test('equipment returns with its original identity; consumables are used and loot has unique IDs', () => {
+  const complete = fulfill(createGame())
+  const issued = complete.issuedByOrder[ORDERS[0].id]!
+  Object.freeze(complete.slots)
+  Object.freeze(issued)
+  const action = { type: 'return', orderId: ORDERS[0].id, seed: 1500 } as const
+  const returned = gameReducer(complete, action)
+  assert.deepEqual(returned, gameReducer(complete, action), 'explicit randomness is reproducible')
+  const all = [...returned.slots.filter((item) => item !== null), ...returned.pendingIncoming]
+  for (const item of issued) {
+    if (ITEM_TYPES[item.kind].category === '消耗品') assert.ok(!all.some((candidate) => candidate.id === item.id))
+    else assert.equal(all.find((candidate) => candidate.id === item.id), item)
+  }
+  assert.equal(returned.lastReturn!.equipmentCount, 2)
+  assert.equal(returned.lastReturn!.consumedCount, 2)
+  assert.ok(returned.lastReturn!.lootCount >= 2 && returned.lastReturn!.lootCount <= 4)
+  assert.equal(all.length, 96 - 2 + returned.lastReturn!.lootCount)
+  assert.equal(new Set(all.map((item) => item.id)).size, all.length)
+  assert.match(returned.lastReturn!.comment, /ただいま|戻った|寄り道/)
+  assert.equal(complete.issuedByOrder[ORDERS[0].id]!.length, 4, 'previous state is untouched')
+})
+
+test('incoming items only fill random empty slots and preserve every arranged occupied slot', () => {
+  let state = createGame()
+  state = gameReducer(gameReducer(gameReducer(state, { type: 'select', slot: 0 }), { type: 'move' }), { type: 'select', slot: 90 })
+  const complete = fulfill(state)
+  const returned = gameReducer(complete, { type: 'return', orderId: ORDERS[0].id, seed: 1500 })
+  for (const [slot, item] of complete.slots.entries()) if (item) assert.equal(returned.slots[slot], item)
+  assert.equal(returned.slots.length, 96)
+  const batch = createReturnBatch('test', [], 1500)
+  const slots = Array(12).fill(null)
+  assert.notDeepEqual(placeIncoming(slots, batch.items, 1).slots, placeIncoming(slots, batch.items, 2).slots)
+  assert.deepEqual(placeIncoming(slots, batch.items, 1), placeIncoming(slots, batch.items, 1))
+})
+
+test('overflow stays queued; receiving after deliveries does not reroll or duplicate the batch', () => {
+  const complete = fulfill(createGame())
+  const returned = gameReducer(complete, { type: 'return', orderId: ORDERS[0].id, seed: 1500 })
+  assert.equal(ids(returned).length, 96)
+  assert.equal(returned.pendingIncoming.length, 2)
+  const waitingIds = returned.pendingIncoming.map((item) => item.id)
+  const noRoom = gameReducer(returned, { type: 'receive', seed: 9 })
+  assert.equal(noRoom.slots, returned.slots)
+  assert.equal(noRoom.pendingIncoming, returned.pendingIncoming)
+  let next = gameReducer(noRoom, { type: 'next', orderId: ORDERS[0].id })
+  assert.deepEqual(next.pendingIncoming, returned.pendingIncoming)
+  next = deliverKind(next, 'staff')
+  const received = gameReducer(next, { type: 'receive', seed: 4 })
+  assert.equal(received.pendingIncoming.length, 1)
+  assert.ok(ids(received).includes(waitingIds[0]))
+  assert.equal(received.pendingIncoming[0].id, waitingIds[1])
+  assert.equal(received.lastReturn, returned.lastReturn)
+  const repeated = gameReducer(received, { type: 'receive', seed: 4 })
+  assert.deepEqual(repeated.slots, received.slots)
+  assert.deepEqual(repeated.pendingIncoming, received.pendingIncoming)
+  assert.equal(gameReducer(repeated, { type: 'return', orderId: ORDERS[0].id, seed: 123 }), repeated)
+})
+
+test('a completely full warehouse retains the entire incoming batch without mutation', () => {
+  const state = createGame()
+  const incoming = createReturnBatch('full-test', [], 1500).items
+  Object.freeze(state.slots)
+  Object.freeze(incoming)
+  const result = placeIncoming(state.slots, incoming, 2)
+  assert.deepEqual(result.slots, state.slots)
+  assert.deepEqual(result.pendingIncoming, incoming)
+  assert.equal(result.placed, 0)
+  const oneEmpty = [...state.slots]
+  oneEmpty[42] = null
+  const partial = placeIncoming(oneEmpty, result.pendingIncoming, 8)
+  assert.equal(partial.slots[42], incoming[0])
+  assert.deepEqual(partial.pendingIncoming, incoming.slice(1))
+})
+
+test('skipped returns remain available and replay clears all ledgers, receipts and pending items', () => {
+  let state = createGame()
+  for (const order of ORDERS) {
+    state = fulfill(state)
+    if (order !== ORDERS.at(-1)) state = gameReducer(state, { type: 'next', orderId: order.id })
+  }
+  assert.ok(isFinished(state))
+  for (const order of ORDERS) {
+    assert.equal(getReturnableOrder(state)!.id, order.id)
+    state = gameReducer(state, { type: 'return', orderId: order.id, seed: 1500 })
+    const all = [...ids(state), ...state.pendingIncoming.map((item) => item.id)]
+    assert.equal(new Set(all).size, all.length)
+    assert.ok(isFinished(state))
+  }
+  assert.equal(getReturnableOrder(state), null)
+  assert.deepEqual(state.returnedOrderIds, ORDERS.map((order) => order.id))
+  assert.deepEqual(gameReducer(state, { type: 'reset' }), createGame())
 })
