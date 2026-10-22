@@ -1,125 +1,121 @@
-import { createInventory, ITEM_TYPES, INITIAL_ORDER } from './data.ts'
-import type { Item, Order } from './data.ts'
-import { createGame } from './game.ts'
-import type { GameState } from './game.ts'
-import type { ReturnReport } from './arrivals.ts'
+import { createInventory, ITEM_TYPES } from './data.ts'
+import type { Item } from './data.ts'
+import { createGame, createAdventure, currentAdventure, HERO_CAPACITY, inheritedReturn } from './game.ts'
+import type { GameState, Adventure, ReturnBatch } from './game.ts'
+import { validateLegacyState } from './legacy.ts'
+import type { LegacyState } from './legacy.ts'
 
 export const SAVE_KEY = 'guild-keeper.save'
-export const SAVE_VERSION = 1
+export const SAVE_BACKUP_KEY = 'guild-keeper.save.v1-backup'
+export const SAVE_VERSION = 2
 export type SaveStorage = Pick<Storage, 'getItem' | 'setItem'>
 export type LoadedGame = { state: GameState; blocked: boolean; message: string }
-
-function check(condition: unknown): asserts condition {
-  if (!condition) throw new Error('Invalid save')
-}
-function record(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-function item(value: unknown): asserts value is Item {
-  check(record(value) && typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 100
-    && typeof value.kind === 'string' && Object.hasOwn(ITEM_TYPES, value.kind))
-}
-function order(value: unknown): asserts value is Order {
-  check(record(value) && typeof value.id === 'string' && typeof value.title === 'string'
-    && value.title.length <= 100 && typeof value.message === 'string' && value.message.length <= 300
-    && Array.isArray(value.lines) && value.lines.length >= 1 && value.lines.length <= 3)
-  const kinds = new Set()
-  for (const line of value.lines) {
-    check(record(line) && typeof line.kind === 'string' && Object.hasOwn(ITEM_TYPES, line.kind)
-      && Number.isInteger(line.quantity) && Number(line.quantity) >= 1 && Number(line.quantity) <= 3 && !kinds.has(line.kind))
-    kinds.add(line.kind)
-  }
+function check(condition: unknown): asserts condition { if (!condition) throw new Error('Invalid save') }
+function object(v: unknown): v is Record<string, unknown> { return !!v && typeof v === 'object' && !Array.isArray(v) }
+function item(v: unknown): asserts v is Item {
+  check(object(v) && typeof v.id === 'string' && v.id.length > 0 && v.id.length <= 100
+    && typeof v.kind === 'string' && Object.hasOwn(ITEM_TYPES, v.kind))
 }
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
-
-// Validate identities and conservation by replaying only the persisted ledger,
-// never rerunning random arrivals. Historical gear may be issued on many days;
-// only the live stock/pending/away locations must have unique owners.
+export function legacyOwned(s: LegacyState): readonly Item[] {
+  const id = s.orders[s.orderIndex].id
+  return [...s.slots.filter((i): i is Item => i !== null), ...s.pendingIncoming,
+    ...(s.returnedOrderIds.includes(id) ? [] : s.issuedByOrder[id] ?? [])]
+}
+export function migrateLegacy(value: unknown): GameState {
+  const legacy = validateLegacyState(value)
+  const day = legacy.orderIndex + 1
+  const a = createAdventure(day)
+  const issued = legacy.returnedOrderIds.includes(a.id) ? [] : legacy.issuedByOrder[a.id] ?? []
+  return { ...createGame(), slots: legacy.slots, day, adventures: [a], legacy,
+    heroSlots: Array.from({ length: HERO_CAPACITY }, (_, i) => issued[i] ?? null),
+    pendingIncoming: [...legacy.pendingIncoming, ...issued.slice(HERO_CAPACITY)],
+    notice: issued.length ? '旧記録を移行しました。未帰還の支給品は準備欄へ戻しました。持ち物を確認して出発できます。'
+      : '旧記録の配置・受取待ち・履歴を移行しました。' }
+}
+// Reconstruct expected ownership from the initial stock / validated v1 baseline.
+// Historical entries are records, not a second physical inventory.
 export function validateState(value: unknown): GameState {
-  check(record(value))
+  check(object(value))
   const s = value as unknown as GameState
-  check(Array.isArray(s.slots) && s.slots.length === 96 && Array.isArray(s.pendingIncoming)
-    && Array.isArray(s.orders) && Number.isSafeInteger(s.orderIndex) && s.orderIndex >= 0
-    && s.orders.length === s.orderIndex + 1 && record(s.issuedByOrder)
-    && Array.isArray(s.returnHistory) && Array.isArray(s.returnedOrderIds) && record(s.delivered))
-  check(s.returnHistory.length === s.orderIndex || s.returnHistory.length === s.orderIndex + 1)
-  const expected = new Map(createInventory().filter((i): i is Item => i !== null).map((i) => [i.id, i.kind]))
-  let total = 0
-  for (const [index, entry] of s.orders.entries()) {
-    order(entry)
-    check(entry.id === `day-${index + 1}`)
-    if (index === 0) check(equal(entry, INITIAL_ORDER))
-    const issued = s.issuedByOrder[entry.id] ?? []
-    check(Array.isArray(issued))
-    const counts: Record<string, number> = {}
-    for (const supplied of issued) {
-      item(supplied)
-      check(expected.get(supplied.id) === supplied.kind)
-      expected.delete(supplied.id)
-      counts[supplied.kind] = (counts[supplied.kind] ?? 0) + 1
-      const requirement = entry.lines.find((line) => line.kind === supplied.kind)
-      check(requirement && counts[supplied.kind] <= requirement.quantity)
-      total++
-    }
-    const returned = s.returnHistory[index]
-    if (index < s.orderIndex || returned) check(entry.lines.every((line) => counts[line.kind] === line.quantity))
-    if (returned) {
-      check(record(returned) && record(returned.report) && Array.isArray(returned.items))
-      const equipment = issued.filter((i: Item) => ITEM_TYPES[i.kind].category !== '消耗品')
-      const report = returned.report as ReturnReport
-      check(report.orderId === entry.id && report.equipmentCount === equipment.length
-        && report.consumedCount === issued.length - equipment.length
-        && Number.isInteger(report.lootCount) && report.lootCount >= 2 && report.lootCount <= 4
-        && typeof report.comment === 'string' && report.comment.length <= 300
-        && returned.items.length === equipment.length + report.lootCount)
-      for (const [position, incoming] of returned.items.entries()) {
-        item(incoming)
-        if (position < equipment.length) check(equal(incoming, equipment[position]))
-        else check(incoming.id === `loot-${entry.id}-${position - equipment.length + 1}`)
-        check(!expected.has(incoming.id))
-        expected.set(incoming.id, incoming.kind)
+  check(Array.isArray(s.slots) && s.slots.length === 96 && Array.isArray(s.heroSlots) && s.heroSlots.length === HERO_CAPACITY
+    && Array.isArray(s.pendingIncoming) && Array.isArray(s.adventures) && s.adventures.length > 0
+    && Number.isSafeInteger(s.day) && s.day >= 1)
+  const legacy = s.legacy === null ? null : validateLegacyState(s.legacy)
+  const baseDay = legacy ? legacy.orderIndex + 1 : 1
+  check(s.day === baseDay + s.adventures.length - 1)
+  const baseline = legacy ? legacyOwned(legacy) : createInventory().filter((i): i is Item => i !== null)
+  const expected = new Map(baseline.map((i) => [i.id, i.kind]))
+  check(expected.size === baseline.length)
+  for (const [index, entry] of s.adventures.entries()) {
+    check(object(entry))
+    const a = entry as unknown as Adventure
+    check( a.id === `day-${baseDay + index}` && typeof a.title === 'string' && a.title.length <= 100
+      && typeof a.message === 'string' && a.message.length <= 300 && Array.isArray(a.issued) && a.issued.length <= HERO_CAPACITY)
+    const inherited = inheritedReturn({ ...s, legacy }, a)
+    if (a.timing === null) check(a.returned === null && a.issued.length === 0)
+    else {
+      check(object(a.timing))
+      const t = a.timing as NonNullable<Adventure['timing']>
+      check( Number.isSafeInteger(t.startedAt) && t.startedAt >= 0 && Number.isSafeInteger(t.durationMs)
+        && t.durationMs >= 60000 && t.durationMs <= 180000 && t.durationMs % 1000 === 0
+        && Number.isSafeInteger(t.returnAt) && t.returnAt === t.startedAt + t.durationMs && !inherited)
+      for (const supplied of a.issued) {
+        item(supplied); check(expected.get(supplied.id) === supplied.kind); expected.delete(supplied.id)
       }
     }
-    if (index === s.orderIndex) {
-      check(Object.entries(s.delivered).every(([kind, count]) => counts[kind] === count))
-      check(Object.entries(counts).every(([kind, count]) => s.delivered[kind as keyof typeof s.delivered] === count))
+    if (a.returned !== null) {
+      check(a.timing !== null && object(a.returned) && object(a.returned.report) && Array.isArray(a.returned.items))
+      const equipment = a.issued.filter((i: Item) => ITEM_TYPES[i.kind].category !== '消耗品')
+      const r = (a.returned as ReturnBatch).report
+      check(r.orderId === a.id && r.equipmentCount === equipment.length && r.consumedCount === a.issued.length - equipment.length
+        && Number.isInteger(r.lootCount) && r.lootCount >= 2 && r.lootCount <= 4
+        && typeof r.comment === 'string' && r.comment.length <= 300 && a.returned.items.length === equipment.length + r.lootCount)
+      for (const [n, incoming] of a.returned.items.entries()) {
+        item(incoming)
+        check(n < equipment.length ? equal(incoming, equipment[n]) : incoming.id === `loot-${a.id}-${n - equipment.length + 1}`)
+        check(!expected.has(incoming.id)); expected.set(incoming.id, incoming.kind)
+      }
     }
+    if (index < s.adventures.length - 1) check(a.returned !== null || inherited)
   }
-  const orderIds = new Set(s.orders.map((o) => o.id))
-  check(Object.keys(s.issuedByOrder).every((id) => orderIds.has(id)))
-  check(s.totalDelivered === total && equal(s.returnedOrderIds, s.returnHistory.map((r) => r.report.orderId)))
-  check(equal(s.lastReturn, s.returnHistory.at(-1)?.report ?? null))
-  for (const live of [...s.slots, ...s.pendingIncoming]) {
+  const a = currentAdventure(s)
+  const hero = s.heroSlots.filter((i) => i !== null)
+  if (a.timing && !a.returned) {
+    check(equal(hero, a.issued))
+    for (const i of a.issued) { check(!expected.has(i.id)); expected.set(i.id, i.kind) }
+  } else if (a.returned || inheritedReturn({ ...s, legacy }, a)) check(hero.length === 0)
+  for (const live of [...s.slots, ...s.heroSlots, ...s.pendingIncoming]) {
     if (live === null) continue
-    item(live)
-    check(expected.get(live.id) === live.kind)
-    expected.delete(live.id)
+    item(live); check(expected.get(live.id) === live.kind); expected.delete(live.id)
   }
-  // Pending entries cannot be empty, and no item may disappear or be duplicated.
-  check(s.pendingIncoming.every((i) => i !== null) && expected.size === 0)
-  return { ...s, selectedId: null, moving: false, notice: '倉庫の記録を復元しました。続きから遊べます。' }
+  check(expected.size === 0 && s.pendingIncoming.every((i) => i !== null))
+  return { ...s, legacy, selection: null, moving: false, notice: '倉庫と冒険の記録を復元しました。' }
 }
-
 export function loadGame(storage: SaveStorage): LoadedGame {
   let raw: string | null
   try { raw = storage.getItem(SAVE_KEY) } catch {
-    return { state: createGame(), blocked: true, message: '保存領域を読めません。ブラウザ設定を確認してください。既存の記録を保護するため、自動保存を停止しています。' }
+    return { state: createGame(), blocked: true, message: '保存領域を読めません。記録を保護し、自動保存を停止しています。' }
   }
   if (raw === null) return { state: createGame(), blocked: false, message: '' }
   try {
     const data: unknown = JSON.parse(raw)
-    check(record(data))
-    if (data.version !== SAVE_VERSION) return {
-      state: createGame(), blocked: true,
-      message: '非対応のセーブ形式です。元の記録を保護し、自動保存を停止しました。対応する版で開くか、明示的に初期化してください。',
+    check(object(data))
+    if (data.version === 1) {
+      const migrated = migrateLegacy(data.state)
+      // Backup must succeed before the UI may replace version 1 with version 2.
+      storage.setItem(SAVE_BACKUP_KEY, raw)
+      validateState(migrated)
+      return { state: migrated, blocked: false, message: '' }
     }
+    if (data.version !== SAVE_VERSION) return { state: createGame(), blocked: true,
+      message: '非対応のセーブ形式です。元の記録を保護し、自動保存を停止しました。' }
     return { state: validateState(data.state), blocked: false, message: '' }
   } catch {
     return { state: createGame(), blocked: true,
-      message: 'セーブデータを復元できません。元の記録を保護し、自動保存を停止しました。最初から始める場合だけ初期化してください。' }
+      message: 'セーブを復元・移行できません。元の記録を保護し、自動保存を停止しました。初期化は記録を破棄してよい場合だけ行ってください。' }
   }
 }
-
 export function saveGame(storage: SaveStorage, state: GameState): void {
-  storage.setItem(SAVE_KEY, JSON.stringify({ version: SAVE_VERSION, state: { ...state, selectedId: null, moving: false, notice: '' } }))
+  storage.setItem(SAVE_KEY, JSON.stringify({ version: SAVE_VERSION, state: { ...state, selection: null, moving: false, notice: '' } }))
 }

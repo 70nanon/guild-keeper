@@ -1,0 +1,2291 @@
+{
+  "initial": {
+    "slots": [
+      {
+        "id": "item-53",
+        "kind": "herb"
+      },
+      {
+        "id": "item-5",
+        "kind": "herb"
+      },
+      {
+        "id": "item-21",
+        "kind": "herb"
+      },
+      {
+        "id": "item-39",
+        "kind": "ether"
+      },
+      {
+        "id": "item-11",
+        "kind": "potion"
+      },
+      {
+        "id": "item-51",
+        "kind": "potion"
+      },
+      {
+        "id": "item-9",
+        "kind": "sword"
+      },
+      {
+        "id": "item-28",
+        "kind": "staff"
+      },
+      {
+        "id": "item-15",
+        "kind": "ether"
+      },
+      {
+        "id": "item-89",
+        "kind": "sword"
+      },
+      {
+        "id": "item-79",
+        "kind": "ether"
+      },
+      {
+        "id": "item-87",
+        "kind": "ether"
+      },
+      {
+        "id": "item-35",
+        "kind": "potion"
+      },
+      {
+        "id": "item-36",
+        "kind": "staff"
+      },
+      {
+        "id": "item-41",
+        "kind": "sword"
+      },
+      {
+        "id": "item-62",
+        "kind": "helm"
+      },
+      {
+        "id": "item-3",
+        "kind": "potion"
+      },
+      {
+        "id": "item-37",
+        "kind": "herb"
+      },
+      {
+        "id": "item-7",
+        "kind": "ether"
+      },
+      {
+        "id": "item-84",
+        "kind": "staff"
+      },
+      {
+        "id": "item-17",
+        "kind": "sword"
+      },
+      {
+        "id": "item-63",
+        "kind": "ether"
+      },
+      {
+        "id": "item-33",
+        "kind": "sword"
+      },
+      {
+        "id": "item-68",
+        "kind": "staff"
+      },
+      {
+        "id": "item-91",
+        "kind": "potion"
+      },
+      {
+        "id": "item-16",
+        "kind": "boots"
+      },
+      {
+        "id": "item-4",
+        "kind": "staff"
+      },
+      {
+        "id": "item-78",
+        "kind": "helm"
+      },
+      {
+        "id": "item-73",
+        "kind": "sword"
+      },
+      {
+        "id": "item-61",
+        "kind": "herb"
+      },
+      {
+        "id": "item-8",
+        "kind": "boots"
+      },
+      {
+        "id": "item-83",
+        "kind": "potion"
+      },
+      {
+        "id": "item-13",
+        "kind": "herb"
+      },
+      {
+        "id": "item-45",
+        "kind": "herb"
+      },
+      {
+        "id": "item-31",
+        "kind": "ether"
+      },
+      {
+        "id": "item-85",
+        "kind": "herb"
+      },
+      {
+        "id": "item-72",
+        "kind": "boots"
+      },
+      {
+        "id": "item-34",
+        "kind": "shield"
+      },
+      {
+        "id": "item-59",
+        "kind": "potion"
+      },
+      {
+        "id": "item-60",
+        "kind": "staff"
+      },
+      {
+        "id": "item-1",
+        "kind": "sword"
+      },
+      {
+        "id": "item-93",
+        "kind": "herb"
+      },
+      {
+        "id": "item-30",
+        "kind": "helm"
+      },
+      {
+        "id": "item-42",
+        "kind": "shield"
+      },
+      {
+        "id": "item-44",
+        "kind": "staff"
+      },
+      {
+        "id": "item-18",
+        "kind": "shield"
+      },
+      {
+        "id": "item-49",
+        "kind": "sword"
+      },
+      {
+        "id": "item-88",
+        "kind": "boots"
+      },
+      {
+        "id": "item-50",
+        "kind": "shield"
+      },
+      {
+        "id": "item-76",
+        "kind": "staff"
+      },
+      {
+        "id": "item-25",
+        "kind": "sword"
+      },
+      {
+        "id": "item-38",
+        "kind": "helm"
+      },
+      {
+        "id": "item-57",
+        "kind": "sword"
+      },
+      {
+        "id": "item-75",
+        "kind": "potion"
+      },
+      {
+        "id": "item-19",
+        "kind": "potion"
+      },
+      {
+        "id": "item-64",
+        "kind": "boots"
+      },
+      {
+        "id": "item-55",
+        "kind": "ether"
+      },
+      {
+        "id": "item-48",
+        "kind": "boots"
+      },
+      {
+        "id": "item-43",
+        "kind": "potion"
+      },
+      {
+        "id": "item-67",
+        "kind": "potion"
+      },
+      {
+        "id": "item-2",
+        "kind": "shield"
+      },
+      {
+        "id": "item-32",
+        "kind": "boots"
+      },
+      {
+        "id": "item-20",
+        "kind": "staff"
+      },
+      {
+        "id": "item-71",
+        "kind": "ether"
+      },
+      {
+        "id": "item-6",
+        "kind": "helm"
+      },
+      {
+        "id": "item-24",
+        "kind": "boots"
+      },
+      {
+        "id": "item-81",
+        "kind": "sword"
+      },
+      {
+        "id": "item-69",
+        "kind": "herb"
+      },
+      {
+        "id": "item-90",
+        "kind": "shield"
+      },
+      {
+        "id": "item-52",
+        "kind": "staff"
+      },
+      {
+        "id": "item-65",
+        "kind": "sword"
+      },
+      {
+        "id": "item-54",
+        "kind": "helm"
+      },
+      {
+        "id": "item-14",
+        "kind": "helm"
+      },
+      {
+        "id": "item-86",
+        "kind": "helm"
+      },
+      {
+        "id": "item-12",
+        "kind": "staff"
+      },
+      {
+        "id": "item-66",
+        "kind": "shield"
+      },
+      {
+        "id": "item-94",
+        "kind": "helm"
+      },
+      {
+        "id": "item-40",
+        "kind": "boots"
+      },
+      {
+        "id": "item-27",
+        "kind": "potion"
+      },
+      {
+        "id": "item-95",
+        "kind": "ether"
+      },
+      {
+        "id": "item-58",
+        "kind": "shield"
+      },
+      {
+        "id": "item-22",
+        "kind": "helm"
+      },
+      {
+        "id": "item-74",
+        "kind": "shield"
+      },
+      {
+        "id": "item-92",
+        "kind": "staff"
+      },
+      {
+        "id": "item-77",
+        "kind": "herb"
+      },
+      {
+        "id": "item-56",
+        "kind": "boots"
+      },
+      {
+        "id": "item-29",
+        "kind": "herb"
+      },
+      {
+        "id": "item-96",
+        "kind": "boots"
+      },
+      {
+        "id": "item-47",
+        "kind": "ether"
+      },
+      {
+        "id": "item-80",
+        "kind": "boots"
+      },
+      {
+        "id": "item-23",
+        "kind": "ether"
+      },
+      {
+        "id": "item-10",
+        "kind": "shield"
+      },
+      {
+        "id": "item-46",
+        "kind": "helm"
+      },
+      {
+        "id": "item-26",
+        "kind": "shield"
+      },
+      {
+        "id": "item-82",
+        "kind": "shield"
+      },
+      {
+        "id": "item-70",
+        "kind": "helm"
+      }
+    ],
+    "orders": [
+      {
+        "id": "day-1",
+        "title": "旅立ちの支度",
+        "message": "街道を進むよ。剣と盾、それから回復薬をお願い。",
+        "lines": [
+          {
+            "kind": "sword",
+            "quantity": 1
+          },
+          {
+            "kind": "shield",
+            "quantity": 1
+          },
+          {
+            "kind": "potion",
+            "quantity": 2
+          }
+        ]
+      }
+    ],
+    "returnHistory": [],
+    "orderIndex": 0,
+    "delivered": {},
+    "totalDelivered": 0,
+    "issuedByOrder": {},
+    "returnedOrderIds": [],
+    "pendingIncoming": [],
+    "lastReturn": null,
+    "selectedId": null,
+    "moving": false,
+    "notice": "品を選んで納品。並べ替えるときは「入れ替える」を押してください。"
+  },
+  "partial": {
+    "slots": [
+      {
+        "id": "item-53",
+        "kind": "herb"
+      },
+      {
+        "id": "item-5",
+        "kind": "herb"
+      },
+      {
+        "id": "item-21",
+        "kind": "herb"
+      },
+      {
+        "id": "item-39",
+        "kind": "ether"
+      },
+      {
+        "id": "item-11",
+        "kind": "potion"
+      },
+      {
+        "id": "item-51",
+        "kind": "potion"
+      },
+      null,
+      {
+        "id": "item-28",
+        "kind": "staff"
+      },
+      {
+        "id": "item-15",
+        "kind": "ether"
+      },
+      {
+        "id": "item-89",
+        "kind": "sword"
+      },
+      {
+        "id": "item-79",
+        "kind": "ether"
+      },
+      {
+        "id": "item-87",
+        "kind": "ether"
+      },
+      {
+        "id": "item-35",
+        "kind": "potion"
+      },
+      {
+        "id": "item-36",
+        "kind": "staff"
+      },
+      {
+        "id": "item-41",
+        "kind": "sword"
+      },
+      {
+        "id": "item-62",
+        "kind": "helm"
+      },
+      {
+        "id": "item-3",
+        "kind": "potion"
+      },
+      {
+        "id": "item-37",
+        "kind": "herb"
+      },
+      {
+        "id": "item-7",
+        "kind": "ether"
+      },
+      {
+        "id": "item-84",
+        "kind": "staff"
+      },
+      {
+        "id": "item-17",
+        "kind": "sword"
+      },
+      {
+        "id": "item-63",
+        "kind": "ether"
+      },
+      {
+        "id": "item-33",
+        "kind": "sword"
+      },
+      {
+        "id": "item-68",
+        "kind": "staff"
+      },
+      {
+        "id": "item-91",
+        "kind": "potion"
+      },
+      {
+        "id": "item-16",
+        "kind": "boots"
+      },
+      {
+        "id": "item-4",
+        "kind": "staff"
+      },
+      {
+        "id": "item-78",
+        "kind": "helm"
+      },
+      {
+        "id": "item-73",
+        "kind": "sword"
+      },
+      {
+        "id": "item-61",
+        "kind": "herb"
+      },
+      {
+        "id": "item-8",
+        "kind": "boots"
+      },
+      {
+        "id": "item-83",
+        "kind": "potion"
+      },
+      {
+        "id": "item-13",
+        "kind": "herb"
+      },
+      {
+        "id": "item-45",
+        "kind": "herb"
+      },
+      {
+        "id": "item-31",
+        "kind": "ether"
+      },
+      {
+        "id": "item-85",
+        "kind": "herb"
+      },
+      {
+        "id": "item-72",
+        "kind": "boots"
+      },
+      {
+        "id": "item-34",
+        "kind": "shield"
+      },
+      {
+        "id": "item-59",
+        "kind": "potion"
+      },
+      {
+        "id": "item-60",
+        "kind": "staff"
+      },
+      {
+        "id": "item-1",
+        "kind": "sword"
+      },
+      {
+        "id": "item-93",
+        "kind": "herb"
+      },
+      {
+        "id": "item-30",
+        "kind": "helm"
+      },
+      {
+        "id": "item-42",
+        "kind": "shield"
+      },
+      {
+        "id": "item-44",
+        "kind": "staff"
+      },
+      {
+        "id": "item-18",
+        "kind": "shield"
+      },
+      {
+        "id": "item-49",
+        "kind": "sword"
+      },
+      {
+        "id": "item-88",
+        "kind": "boots"
+      },
+      {
+        "id": "item-50",
+        "kind": "shield"
+      },
+      {
+        "id": "item-76",
+        "kind": "staff"
+      },
+      {
+        "id": "item-25",
+        "kind": "sword"
+      },
+      {
+        "id": "item-38",
+        "kind": "helm"
+      },
+      {
+        "id": "item-57",
+        "kind": "sword"
+      },
+      {
+        "id": "item-75",
+        "kind": "potion"
+      },
+      {
+        "id": "item-19",
+        "kind": "potion"
+      },
+      {
+        "id": "item-64",
+        "kind": "boots"
+      },
+      {
+        "id": "item-55",
+        "kind": "ether"
+      },
+      {
+        "id": "item-48",
+        "kind": "boots"
+      },
+      {
+        "id": "item-43",
+        "kind": "potion"
+      },
+      {
+        "id": "item-67",
+        "kind": "potion"
+      },
+      {
+        "id": "item-2",
+        "kind": "shield"
+      },
+      {
+        "id": "item-32",
+        "kind": "boots"
+      },
+      {
+        "id": "item-20",
+        "kind": "staff"
+      },
+      {
+        "id": "item-71",
+        "kind": "ether"
+      },
+      {
+        "id": "item-6",
+        "kind": "helm"
+      },
+      {
+        "id": "item-24",
+        "kind": "boots"
+      },
+      {
+        "id": "item-81",
+        "kind": "sword"
+      },
+      {
+        "id": "item-69",
+        "kind": "herb"
+      },
+      {
+        "id": "item-90",
+        "kind": "shield"
+      },
+      {
+        "id": "item-52",
+        "kind": "staff"
+      },
+      {
+        "id": "item-65",
+        "kind": "sword"
+      },
+      {
+        "id": "item-54",
+        "kind": "helm"
+      },
+      {
+        "id": "item-14",
+        "kind": "helm"
+      },
+      {
+        "id": "item-86",
+        "kind": "helm"
+      },
+      {
+        "id": "item-12",
+        "kind": "staff"
+      },
+      {
+        "id": "item-66",
+        "kind": "shield"
+      },
+      {
+        "id": "item-94",
+        "kind": "helm"
+      },
+      {
+        "id": "item-40",
+        "kind": "boots"
+      },
+      {
+        "id": "item-27",
+        "kind": "potion"
+      },
+      {
+        "id": "item-95",
+        "kind": "ether"
+      },
+      {
+        "id": "item-58",
+        "kind": "shield"
+      },
+      {
+        "id": "item-22",
+        "kind": "helm"
+      },
+      {
+        "id": "item-74",
+        "kind": "shield"
+      },
+      {
+        "id": "item-92",
+        "kind": "staff"
+      },
+      {
+        "id": "item-77",
+        "kind": "herb"
+      },
+      {
+        "id": "item-56",
+        "kind": "boots"
+      },
+      {
+        "id": "item-29",
+        "kind": "herb"
+      },
+      {
+        "id": "item-96",
+        "kind": "boots"
+      },
+      {
+        "id": "item-47",
+        "kind": "ether"
+      },
+      {
+        "id": "item-80",
+        "kind": "boots"
+      },
+      {
+        "id": "item-23",
+        "kind": "ether"
+      },
+      {
+        "id": "item-10",
+        "kind": "shield"
+      },
+      {
+        "id": "item-46",
+        "kind": "helm"
+      },
+      {
+        "id": "item-26",
+        "kind": "shield"
+      },
+      {
+        "id": "item-82",
+        "kind": "shield"
+      },
+      {
+        "id": "item-70",
+        "kind": "helm"
+      }
+    ],
+    "orders": [
+      {
+        "id": "day-1",
+        "title": "旅立ちの支度",
+        "message": "街道を進むよ。剣と盾、それから回復薬をお願い。",
+        "lines": [
+          {
+            "kind": "sword",
+            "quantity": 1
+          },
+          {
+            "kind": "shield",
+            "quantity": 1
+          },
+          {
+            "kind": "potion",
+            "quantity": 2
+          }
+        ]
+      }
+    ],
+    "returnHistory": [],
+    "orderIndex": 0,
+    "delivered": {
+      "sword": 1
+    },
+    "totalDelivered": 1,
+    "issuedByOrder": {
+      "day-1": [
+        {
+          "id": "item-9",
+          "kind": "sword"
+        }
+      ]
+    },
+    "returnedOrderIds": [],
+    "pendingIncoming": [],
+    "lastReturn": null,
+    "selectedId": null,
+    "moving": false,
+    "notice": "鉄の剣を1個納品しました。"
+  },
+  "complete": {
+    "slots": [
+      {
+        "id": "item-53",
+        "kind": "herb"
+      },
+      {
+        "id": "item-5",
+        "kind": "herb"
+      },
+      {
+        "id": "item-21",
+        "kind": "herb"
+      },
+      {
+        "id": "item-39",
+        "kind": "ether"
+      },
+      null,
+      null,
+      null,
+      {
+        "id": "item-28",
+        "kind": "staff"
+      },
+      {
+        "id": "item-15",
+        "kind": "ether"
+      },
+      {
+        "id": "item-89",
+        "kind": "sword"
+      },
+      {
+        "id": "item-79",
+        "kind": "ether"
+      },
+      {
+        "id": "item-87",
+        "kind": "ether"
+      },
+      {
+        "id": "item-35",
+        "kind": "potion"
+      },
+      {
+        "id": "item-36",
+        "kind": "staff"
+      },
+      {
+        "id": "item-41",
+        "kind": "sword"
+      },
+      {
+        "id": "item-62",
+        "kind": "helm"
+      },
+      {
+        "id": "item-3",
+        "kind": "potion"
+      },
+      {
+        "id": "item-37",
+        "kind": "herb"
+      },
+      {
+        "id": "item-7",
+        "kind": "ether"
+      },
+      {
+        "id": "item-84",
+        "kind": "staff"
+      },
+      {
+        "id": "item-17",
+        "kind": "sword"
+      },
+      {
+        "id": "item-63",
+        "kind": "ether"
+      },
+      {
+        "id": "item-33",
+        "kind": "sword"
+      },
+      {
+        "id": "item-68",
+        "kind": "staff"
+      },
+      {
+        "id": "item-91",
+        "kind": "potion"
+      },
+      {
+        "id": "item-16",
+        "kind": "boots"
+      },
+      {
+        "id": "item-4",
+        "kind": "staff"
+      },
+      {
+        "id": "item-78",
+        "kind": "helm"
+      },
+      {
+        "id": "item-73",
+        "kind": "sword"
+      },
+      {
+        "id": "item-61",
+        "kind": "herb"
+      },
+      {
+        "id": "item-8",
+        "kind": "boots"
+      },
+      {
+        "id": "item-83",
+        "kind": "potion"
+      },
+      {
+        "id": "item-13",
+        "kind": "herb"
+      },
+      {
+        "id": "item-45",
+        "kind": "herb"
+      },
+      {
+        "id": "item-31",
+        "kind": "ether"
+      },
+      {
+        "id": "item-85",
+        "kind": "herb"
+      },
+      {
+        "id": "item-72",
+        "kind": "boots"
+      },
+      null,
+      {
+        "id": "item-59",
+        "kind": "potion"
+      },
+      {
+        "id": "item-60",
+        "kind": "staff"
+      },
+      {
+        "id": "item-1",
+        "kind": "sword"
+      },
+      {
+        "id": "item-93",
+        "kind": "herb"
+      },
+      {
+        "id": "item-30",
+        "kind": "helm"
+      },
+      {
+        "id": "item-42",
+        "kind": "shield"
+      },
+      {
+        "id": "item-44",
+        "kind": "staff"
+      },
+      {
+        "id": "item-18",
+        "kind": "shield"
+      },
+      {
+        "id": "item-49",
+        "kind": "sword"
+      },
+      {
+        "id": "item-88",
+        "kind": "boots"
+      },
+      {
+        "id": "item-50",
+        "kind": "shield"
+      },
+      {
+        "id": "item-76",
+        "kind": "staff"
+      },
+      {
+        "id": "item-25",
+        "kind": "sword"
+      },
+      {
+        "id": "item-38",
+        "kind": "helm"
+      },
+      {
+        "id": "item-57",
+        "kind": "sword"
+      },
+      {
+        "id": "item-75",
+        "kind": "potion"
+      },
+      {
+        "id": "item-19",
+        "kind": "potion"
+      },
+      {
+        "id": "item-64",
+        "kind": "boots"
+      },
+      {
+        "id": "item-55",
+        "kind": "ether"
+      },
+      {
+        "id": "item-48",
+        "kind": "boots"
+      },
+      {
+        "id": "item-43",
+        "kind": "potion"
+      },
+      {
+        "id": "item-67",
+        "kind": "potion"
+      },
+      {
+        "id": "item-2",
+        "kind": "shield"
+      },
+      {
+        "id": "item-32",
+        "kind": "boots"
+      },
+      {
+        "id": "item-20",
+        "kind": "staff"
+      },
+      {
+        "id": "item-71",
+        "kind": "ether"
+      },
+      {
+        "id": "item-6",
+        "kind": "helm"
+      },
+      {
+        "id": "item-24",
+        "kind": "boots"
+      },
+      {
+        "id": "item-81",
+        "kind": "sword"
+      },
+      {
+        "id": "item-69",
+        "kind": "herb"
+      },
+      {
+        "id": "item-90",
+        "kind": "shield"
+      },
+      {
+        "id": "item-52",
+        "kind": "staff"
+      },
+      {
+        "id": "item-65",
+        "kind": "sword"
+      },
+      {
+        "id": "item-54",
+        "kind": "helm"
+      },
+      {
+        "id": "item-14",
+        "kind": "helm"
+      },
+      {
+        "id": "item-86",
+        "kind": "helm"
+      },
+      {
+        "id": "item-12",
+        "kind": "staff"
+      },
+      {
+        "id": "item-66",
+        "kind": "shield"
+      },
+      {
+        "id": "item-94",
+        "kind": "helm"
+      },
+      {
+        "id": "item-40",
+        "kind": "boots"
+      },
+      {
+        "id": "item-27",
+        "kind": "potion"
+      },
+      {
+        "id": "item-95",
+        "kind": "ether"
+      },
+      {
+        "id": "item-58",
+        "kind": "shield"
+      },
+      {
+        "id": "item-22",
+        "kind": "helm"
+      },
+      {
+        "id": "item-74",
+        "kind": "shield"
+      },
+      {
+        "id": "item-92",
+        "kind": "staff"
+      },
+      {
+        "id": "item-77",
+        "kind": "herb"
+      },
+      {
+        "id": "item-56",
+        "kind": "boots"
+      },
+      {
+        "id": "item-29",
+        "kind": "herb"
+      },
+      {
+        "id": "item-96",
+        "kind": "boots"
+      },
+      {
+        "id": "item-47",
+        "kind": "ether"
+      },
+      {
+        "id": "item-80",
+        "kind": "boots"
+      },
+      {
+        "id": "item-23",
+        "kind": "ether"
+      },
+      {
+        "id": "item-10",
+        "kind": "shield"
+      },
+      {
+        "id": "item-46",
+        "kind": "helm"
+      },
+      {
+        "id": "item-26",
+        "kind": "shield"
+      },
+      {
+        "id": "item-82",
+        "kind": "shield"
+      },
+      {
+        "id": "item-70",
+        "kind": "helm"
+      }
+    ],
+    "orders": [
+      {
+        "id": "day-1",
+        "title": "旅立ちの支度",
+        "message": "街道を進むよ。剣と盾、それから回復薬をお願い。",
+        "lines": [
+          {
+            "kind": "sword",
+            "quantity": 1
+          },
+          {
+            "kind": "shield",
+            "quantity": 1
+          },
+          {
+            "kind": "potion",
+            "quantity": 2
+          }
+        ]
+      }
+    ],
+    "returnHistory": [],
+    "orderIndex": 0,
+    "delivered": {
+      "sword": 1,
+      "shield": 1,
+      "potion": 2
+    },
+    "totalDelivered": 4,
+    "issuedByOrder": {
+      "day-1": [
+        {
+          "id": "item-9",
+          "kind": "sword"
+        },
+        {
+          "id": "item-34",
+          "kind": "shield"
+        },
+        {
+          "id": "item-11",
+          "kind": "potion"
+        },
+        {
+          "id": "item-51",
+          "kind": "potion"
+        }
+      ]
+    },
+    "returnedOrderIds": [],
+    "pendingIncoming": [],
+    "lastReturn": null,
+    "selectedId": null,
+    "moving": false,
+    "notice": "注文を完了しました。勇者の帰還を待ちましょう。"
+  },
+  "returned": {
+    "slots": [
+      {
+        "id": "item-53",
+        "kind": "herb"
+      },
+      {
+        "id": "item-5",
+        "kind": "herb"
+      },
+      {
+        "id": "item-21",
+        "kind": "herb"
+      },
+      {
+        "id": "item-39",
+        "kind": "ether"
+      },
+      {
+        "id": "loot-day-1-2",
+        "kind": "boots"
+      },
+      {
+        "id": "item-34",
+        "kind": "shield"
+      },
+      {
+        "id": "loot-day-1-1",
+        "kind": "potion"
+      },
+      {
+        "id": "item-28",
+        "kind": "staff"
+      },
+      {
+        "id": "item-15",
+        "kind": "ether"
+      },
+      {
+        "id": "item-89",
+        "kind": "sword"
+      },
+      {
+        "id": "item-79",
+        "kind": "ether"
+      },
+      {
+        "id": "item-87",
+        "kind": "ether"
+      },
+      {
+        "id": "item-35",
+        "kind": "potion"
+      },
+      {
+        "id": "item-36",
+        "kind": "staff"
+      },
+      {
+        "id": "item-41",
+        "kind": "sword"
+      },
+      {
+        "id": "item-62",
+        "kind": "helm"
+      },
+      {
+        "id": "item-3",
+        "kind": "potion"
+      },
+      {
+        "id": "item-37",
+        "kind": "herb"
+      },
+      {
+        "id": "item-7",
+        "kind": "ether"
+      },
+      {
+        "id": "item-84",
+        "kind": "staff"
+      },
+      {
+        "id": "item-17",
+        "kind": "sword"
+      },
+      {
+        "id": "item-63",
+        "kind": "ether"
+      },
+      {
+        "id": "item-33",
+        "kind": "sword"
+      },
+      {
+        "id": "item-68",
+        "kind": "staff"
+      },
+      {
+        "id": "item-91",
+        "kind": "potion"
+      },
+      {
+        "id": "item-16",
+        "kind": "boots"
+      },
+      {
+        "id": "item-4",
+        "kind": "staff"
+      },
+      {
+        "id": "item-78",
+        "kind": "helm"
+      },
+      {
+        "id": "item-73",
+        "kind": "sword"
+      },
+      {
+        "id": "item-61",
+        "kind": "herb"
+      },
+      {
+        "id": "item-8",
+        "kind": "boots"
+      },
+      {
+        "id": "item-83",
+        "kind": "potion"
+      },
+      {
+        "id": "item-13",
+        "kind": "herb"
+      },
+      {
+        "id": "item-45",
+        "kind": "herb"
+      },
+      {
+        "id": "item-31",
+        "kind": "ether"
+      },
+      {
+        "id": "item-85",
+        "kind": "herb"
+      },
+      {
+        "id": "item-72",
+        "kind": "boots"
+      },
+      {
+        "id": "item-9",
+        "kind": "sword"
+      },
+      {
+        "id": "item-59",
+        "kind": "potion"
+      },
+      {
+        "id": "item-60",
+        "kind": "staff"
+      },
+      {
+        "id": "item-1",
+        "kind": "sword"
+      },
+      {
+        "id": "item-93",
+        "kind": "herb"
+      },
+      {
+        "id": "item-30",
+        "kind": "helm"
+      },
+      {
+        "id": "item-42",
+        "kind": "shield"
+      },
+      {
+        "id": "item-44",
+        "kind": "staff"
+      },
+      {
+        "id": "item-18",
+        "kind": "shield"
+      },
+      {
+        "id": "item-49",
+        "kind": "sword"
+      },
+      {
+        "id": "item-88",
+        "kind": "boots"
+      },
+      {
+        "id": "item-50",
+        "kind": "shield"
+      },
+      {
+        "id": "item-76",
+        "kind": "staff"
+      },
+      {
+        "id": "item-25",
+        "kind": "sword"
+      },
+      {
+        "id": "item-38",
+        "kind": "helm"
+      },
+      {
+        "id": "item-57",
+        "kind": "sword"
+      },
+      {
+        "id": "item-75",
+        "kind": "potion"
+      },
+      {
+        "id": "item-19",
+        "kind": "potion"
+      },
+      {
+        "id": "item-64",
+        "kind": "boots"
+      },
+      {
+        "id": "item-55",
+        "kind": "ether"
+      },
+      {
+        "id": "item-48",
+        "kind": "boots"
+      },
+      {
+        "id": "item-43",
+        "kind": "potion"
+      },
+      {
+        "id": "item-67",
+        "kind": "potion"
+      },
+      {
+        "id": "item-2",
+        "kind": "shield"
+      },
+      {
+        "id": "item-32",
+        "kind": "boots"
+      },
+      {
+        "id": "item-20",
+        "kind": "staff"
+      },
+      {
+        "id": "item-71",
+        "kind": "ether"
+      },
+      {
+        "id": "item-6",
+        "kind": "helm"
+      },
+      {
+        "id": "item-24",
+        "kind": "boots"
+      },
+      {
+        "id": "item-81",
+        "kind": "sword"
+      },
+      {
+        "id": "item-69",
+        "kind": "herb"
+      },
+      {
+        "id": "item-90",
+        "kind": "shield"
+      },
+      {
+        "id": "item-52",
+        "kind": "staff"
+      },
+      {
+        "id": "item-65",
+        "kind": "sword"
+      },
+      {
+        "id": "item-54",
+        "kind": "helm"
+      },
+      {
+        "id": "item-14",
+        "kind": "helm"
+      },
+      {
+        "id": "item-86",
+        "kind": "helm"
+      },
+      {
+        "id": "item-12",
+        "kind": "staff"
+      },
+      {
+        "id": "item-66",
+        "kind": "shield"
+      },
+      {
+        "id": "item-94",
+        "kind": "helm"
+      },
+      {
+        "id": "item-40",
+        "kind": "boots"
+      },
+      {
+        "id": "item-27",
+        "kind": "potion"
+      },
+      {
+        "id": "item-95",
+        "kind": "ether"
+      },
+      {
+        "id": "item-58",
+        "kind": "shield"
+      },
+      {
+        "id": "item-22",
+        "kind": "helm"
+      },
+      {
+        "id": "item-74",
+        "kind": "shield"
+      },
+      {
+        "id": "item-92",
+        "kind": "staff"
+      },
+      {
+        "id": "item-77",
+        "kind": "herb"
+      },
+      {
+        "id": "item-56",
+        "kind": "boots"
+      },
+      {
+        "id": "item-29",
+        "kind": "herb"
+      },
+      {
+        "id": "item-96",
+        "kind": "boots"
+      },
+      {
+        "id": "item-47",
+        "kind": "ether"
+      },
+      {
+        "id": "item-80",
+        "kind": "boots"
+      },
+      {
+        "id": "item-23",
+        "kind": "ether"
+      },
+      {
+        "id": "item-10",
+        "kind": "shield"
+      },
+      {
+        "id": "item-46",
+        "kind": "helm"
+      },
+      {
+        "id": "item-26",
+        "kind": "shield"
+      },
+      {
+        "id": "item-82",
+        "kind": "shield"
+      },
+      {
+        "id": "item-70",
+        "kind": "helm"
+      }
+    ],
+    "orders": [
+      {
+        "id": "day-1",
+        "title": "旅立ちの支度",
+        "message": "街道を進むよ。剣と盾、それから回復薬をお願い。",
+        "lines": [
+          {
+            "kind": "sword",
+            "quantity": 1
+          },
+          {
+            "kind": "shield",
+            "quantity": 1
+          },
+          {
+            "kind": "potion",
+            "quantity": 2
+          }
+        ]
+      }
+    ],
+    "returnHistory": [
+      {
+        "items": [
+          {
+            "id": "item-9",
+            "kind": "sword"
+          },
+          {
+            "id": "item-34",
+            "kind": "shield"
+          },
+          {
+            "id": "loot-day-1-1",
+            "kind": "potion"
+          },
+          {
+            "id": "loot-day-1-2",
+            "kind": "boots"
+          },
+          {
+            "id": "loot-day-1-3",
+            "kind": "shield"
+          },
+          {
+            "id": "loot-day-1-4",
+            "kind": "sword"
+          }
+        ],
+        "report": {
+          "orderId": "day-1",
+          "equipmentCount": 2,
+          "lootCount": 4,
+          "consumedCount": 2,
+          "comment": "ただいま！道で役立ちそうな物を拾ったぞ。"
+        }
+      }
+    ],
+    "orderIndex": 0,
+    "delivered": {
+      "sword": 1,
+      "shield": 1,
+      "potion": 2
+    },
+    "totalDelivered": 4,
+    "issuedByOrder": {
+      "day-1": [
+        {
+          "id": "item-9",
+          "kind": "sword"
+        },
+        {
+          "id": "item-34",
+          "kind": "shield"
+        },
+        {
+          "id": "item-11",
+          "kind": "potion"
+        },
+        {
+          "id": "item-51",
+          "kind": "potion"
+        }
+      ]
+    },
+    "returnedOrderIds": [
+      "day-1"
+    ],
+    "pendingIncoming": [
+      {
+        "id": "loot-day-1-3",
+        "kind": "shield"
+      },
+      {
+        "id": "loot-day-1-4",
+        "kind": "sword"
+      }
+    ],
+    "lastReturn": {
+      "orderId": "day-1",
+      "equipmentCount": 2,
+      "lootCount": 4,
+      "consumedCount": 2,
+      "comment": "ただいま！道で役立ちそうな物を拾ったぞ。"
+    },
+    "selectedId": null,
+    "moving": false,
+    "notice": "勇者が帰還しました。装備2個・戦利品4個を持ち帰り、4個入庫しました。受取待ち2個は保管しています。"
+  },
+  "nextPartial": {
+    "slots": [
+      {
+        "id": "item-53",
+        "kind": "herb"
+      },
+      {
+        "id": "item-5",
+        "kind": "herb"
+      },
+      {
+        "id": "item-21",
+        "kind": "herb"
+      },
+      {
+        "id": "item-39",
+        "kind": "ether"
+      },
+      {
+        "id": "loot-day-1-2",
+        "kind": "boots"
+      },
+      {
+        "id": "item-34",
+        "kind": "shield"
+      },
+      {
+        "id": "loot-day-1-1",
+        "kind": "potion"
+      },
+      {
+        "id": "item-28",
+        "kind": "staff"
+      },
+      {
+        "id": "item-15",
+        "kind": "ether"
+      },
+      null,
+      {
+        "id": "item-79",
+        "kind": "ether"
+      },
+      {
+        "id": "item-87",
+        "kind": "ether"
+      },
+      {
+        "id": "item-35",
+        "kind": "potion"
+      },
+      {
+        "id": "item-36",
+        "kind": "staff"
+      },
+      {
+        "id": "item-41",
+        "kind": "sword"
+      },
+      {
+        "id": "item-62",
+        "kind": "helm"
+      },
+      {
+        "id": "item-3",
+        "kind": "potion"
+      },
+      {
+        "id": "item-37",
+        "kind": "herb"
+      },
+      {
+        "id": "item-7",
+        "kind": "ether"
+      },
+      {
+        "id": "item-84",
+        "kind": "staff"
+      },
+      {
+        "id": "item-17",
+        "kind": "sword"
+      },
+      {
+        "id": "item-63",
+        "kind": "ether"
+      },
+      {
+        "id": "item-33",
+        "kind": "sword"
+      },
+      {
+        "id": "item-68",
+        "kind": "staff"
+      },
+      {
+        "id": "item-91",
+        "kind": "potion"
+      },
+      {
+        "id": "item-16",
+        "kind": "boots"
+      },
+      {
+        "id": "item-4",
+        "kind": "staff"
+      },
+      {
+        "id": "item-78",
+        "kind": "helm"
+      },
+      {
+        "id": "item-73",
+        "kind": "sword"
+      },
+      {
+        "id": "item-61",
+        "kind": "herb"
+      },
+      {
+        "id": "item-8",
+        "kind": "boots"
+      },
+      {
+        "id": "item-83",
+        "kind": "potion"
+      },
+      {
+        "id": "item-13",
+        "kind": "herb"
+      },
+      {
+        "id": "item-45",
+        "kind": "herb"
+      },
+      {
+        "id": "item-31",
+        "kind": "ether"
+      },
+      {
+        "id": "item-85",
+        "kind": "herb"
+      },
+      {
+        "id": "item-72",
+        "kind": "boots"
+      },
+      {
+        "id": "item-9",
+        "kind": "sword"
+      },
+      {
+        "id": "item-59",
+        "kind": "potion"
+      },
+      {
+        "id": "item-60",
+        "kind": "staff"
+      },
+      {
+        "id": "item-1",
+        "kind": "sword"
+      },
+      {
+        "id": "item-93",
+        "kind": "herb"
+      },
+      {
+        "id": "item-30",
+        "kind": "helm"
+      },
+      {
+        "id": "item-42",
+        "kind": "shield"
+      },
+      {
+        "id": "item-44",
+        "kind": "staff"
+      },
+      {
+        "id": "item-18",
+        "kind": "shield"
+      },
+      {
+        "id": "item-49",
+        "kind": "sword"
+      },
+      {
+        "id": "item-88",
+        "kind": "boots"
+      },
+      {
+        "id": "item-50",
+        "kind": "shield"
+      },
+      {
+        "id": "item-76",
+        "kind": "staff"
+      },
+      {
+        "id": "item-25",
+        "kind": "sword"
+      },
+      {
+        "id": "item-38",
+        "kind": "helm"
+      },
+      {
+        "id": "item-57",
+        "kind": "sword"
+      },
+      {
+        "id": "item-75",
+        "kind": "potion"
+      },
+      {
+        "id": "item-19",
+        "kind": "potion"
+      },
+      {
+        "id": "item-64",
+        "kind": "boots"
+      },
+      {
+        "id": "item-55",
+        "kind": "ether"
+      },
+      {
+        "id": "item-48",
+        "kind": "boots"
+      },
+      {
+        "id": "item-43",
+        "kind": "potion"
+      },
+      {
+        "id": "item-67",
+        "kind": "potion"
+      },
+      {
+        "id": "item-2",
+        "kind": "shield"
+      },
+      {
+        "id": "item-32",
+        "kind": "boots"
+      },
+      {
+        "id": "item-20",
+        "kind": "staff"
+      },
+      {
+        "id": "item-71",
+        "kind": "ether"
+      },
+      {
+        "id": "item-6",
+        "kind": "helm"
+      },
+      {
+        "id": "item-24",
+        "kind": "boots"
+      },
+      {
+        "id": "item-81",
+        "kind": "sword"
+      },
+      {
+        "id": "item-69",
+        "kind": "herb"
+      },
+      {
+        "id": "item-90",
+        "kind": "shield"
+      },
+      {
+        "id": "item-52",
+        "kind": "staff"
+      },
+      {
+        "id": "item-65",
+        "kind": "sword"
+      },
+      {
+        "id": "item-54",
+        "kind": "helm"
+      },
+      {
+        "id": "item-14",
+        "kind": "helm"
+      },
+      {
+        "id": "item-86",
+        "kind": "helm"
+      },
+      {
+        "id": "item-12",
+        "kind": "staff"
+      },
+      {
+        "id": "item-66",
+        "kind": "shield"
+      },
+      {
+        "id": "item-94",
+        "kind": "helm"
+      },
+      {
+        "id": "item-40",
+        "kind": "boots"
+      },
+      {
+        "id": "item-27",
+        "kind": "potion"
+      },
+      {
+        "id": "item-95",
+        "kind": "ether"
+      },
+      {
+        "id": "item-58",
+        "kind": "shield"
+      },
+      {
+        "id": "item-22",
+        "kind": "helm"
+      },
+      {
+        "id": "item-74",
+        "kind": "shield"
+      },
+      {
+        "id": "item-92",
+        "kind": "staff"
+      },
+      {
+        "id": "item-77",
+        "kind": "herb"
+      },
+      {
+        "id": "item-56",
+        "kind": "boots"
+      },
+      {
+        "id": "item-29",
+        "kind": "herb"
+      },
+      {
+        "id": "item-96",
+        "kind": "boots"
+      },
+      {
+        "id": "item-47",
+        "kind": "ether"
+      },
+      {
+        "id": "item-80",
+        "kind": "boots"
+      },
+      {
+        "id": "item-23",
+        "kind": "ether"
+      },
+      {
+        "id": "item-10",
+        "kind": "shield"
+      },
+      {
+        "id": "item-46",
+        "kind": "helm"
+      },
+      {
+        "id": "item-26",
+        "kind": "shield"
+      },
+      {
+        "id": "item-82",
+        "kind": "shield"
+      },
+      {
+        "id": "item-70",
+        "kind": "helm"
+      }
+    ],
+    "orders": [
+      {
+        "id": "day-1",
+        "title": "旅立ちの支度",
+        "message": "街道を進むよ。剣と盾、それから回復薬をお願い。",
+        "lines": [
+          {
+            "kind": "sword",
+            "quantity": 1
+          },
+          {
+            "kind": "shield",
+            "quantity": 1
+          },
+          {
+            "kind": "potion",
+            "quantity": 2
+          }
+        ]
+      },
+      {
+        "id": "day-2",
+        "title": "今日の冒険の支度",
+        "message": "今日も出かけてくるよ。倉庫にある道具を頼むね。",
+        "lines": [
+          {
+            "kind": "sword",
+            "quantity": 3
+          },
+          {
+            "kind": "shield",
+            "quantity": 2
+          },
+          {
+            "kind": "staff",
+            "quantity": 1
+          }
+        ]
+      }
+    ],
+    "returnHistory": [
+      {
+        "items": [
+          {
+            "id": "item-9",
+            "kind": "sword"
+          },
+          {
+            "id": "item-34",
+            "kind": "shield"
+          },
+          {
+            "id": "loot-day-1-1",
+            "kind": "potion"
+          },
+          {
+            "id": "loot-day-1-2",
+            "kind": "boots"
+          },
+          {
+            "id": "loot-day-1-3",
+            "kind": "shield"
+          },
+          {
+            "id": "loot-day-1-4",
+            "kind": "sword"
+          }
+        ],
+        "report": {
+          "orderId": "day-1",
+          "equipmentCount": 2,
+          "lootCount": 4,
+          "consumedCount": 2,
+          "comment": "ただいま！道で役立ちそうな物を拾ったぞ。"
+        }
+      }
+    ],
+    "orderIndex": 1,
+    "delivered": {
+      "sword": 1
+    },
+    "totalDelivered": 5,
+    "issuedByOrder": {
+      "day-1": [
+        {
+          "id": "item-9",
+          "kind": "sword"
+        },
+        {
+          "id": "item-34",
+          "kind": "shield"
+        },
+        {
+          "id": "item-11",
+          "kind": "potion"
+        },
+        {
+          "id": "item-51",
+          "kind": "potion"
+        }
+      ],
+      "day-2": [
+        {
+          "id": "item-89",
+          "kind": "sword"
+        }
+      ]
+    },
+    "returnedOrderIds": [
+      "day-1"
+    ],
+    "pendingIncoming": [
+      {
+        "id": "loot-day-1-3",
+        "kind": "shield"
+      },
+      {
+        "id": "loot-day-1-4",
+        "kind": "sword"
+      }
+    ],
+    "lastReturn": {
+      "orderId": "day-1",
+      "equipmentCount": 2,
+      "lootCount": 4,
+      "consumedCount": 2,
+      "comment": "ただいま！道で役立ちそうな物を拾ったぞ。"
+    },
+    "selectedId": null,
+    "moving": false,
+    "notice": "鉄の剣を1個納品しました。"
+  }
+}
