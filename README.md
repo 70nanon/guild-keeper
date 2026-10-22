@@ -7,6 +7,7 @@ Guild Keeper（仮）は、RPG 世界の倉庫番として大量の装備や消�
 ## 仕様・実装計画
 
 - [ゲーム仕様書](docs/GAME_DESIGN.md)：ゲームデザインの正本。コンセプト、基本ループ、確定事項と未決定事項
+- [デザインガイドライン](docs/DESIGN_GUIDELINES.md)：村のギルド倉庫を表現するビジュアル方針と UI 開発の基準
 - [実装計画書](docs/IMPLEMENTATION_PLAN.md)：Phase 0〜6 の長期計画・完了条件・テスト方針
 - [機能バックログ](docs/FEATURES.md)：選択できるゲーム機能、依存関係、進捗
 - [開発ガイド](AGENTS.md)：開発時に守るルール
