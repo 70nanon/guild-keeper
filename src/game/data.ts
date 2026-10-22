@@ -18,7 +18,7 @@ export type Order = Readonly<{
   lines: readonly Readonly<{ kind: ItemKind; quantity: number }>[]
 }>
 
-// The first day's familiar order is retained; later days are generated from stock.
+// Frozen version 1 first order, retained only for legacy save validation.
 export const INITIAL_ORDER: Order = {
   id: 'day-1', title: '旅立ちの支度',
   message: '街道を進むよ。剣と盾、それから回復薬をお願い。',

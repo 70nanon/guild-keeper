@@ -1,323 +1,231 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createInventory, ITEM_TYPES, INITIAL_ORDER } from '../src/game/data.ts'
-import { createGame, gameReducer, isOrderComplete, canAdvanceDay, getReturnableOrder } from '../src/game/game.ts'
-import type { GameState } from '../src/game/game.ts'
-import type { ItemKind } from '../src/game/data.ts'
-import { createDailyOrder } from '../src/game/orders.ts'
+import { readFileSync } from 'node:fs'
+import { createGame, currentAdventure, gameReducer, phase, HERO_CAPACITY } from '../src/game/game.ts'
+import type { GameState, GameAction, Location } from '../src/game/game.ts'
+import { ITEM_TYPES } from '../src/game/data.ts'
+import type { Item } from '../src/game/data.ts'
 import { createReturnBatch, placeIncoming } from '../src/game/arrivals.ts'
-
-const ids = (state: GameState) => state.slots.flatMap((item) => item ? [item.id] : []).sort()
-function deliverKind(state: GameState, kind: ItemKind): GameState {
-  const slot = state.slots.findIndex((item) => item?.kind === kind)
-  assert.notEqual(slot, -1, `available inventory for ${kind}`)
-  const selected = gameReducer(state, { type: 'select', slot })
-  return gameReducer(selected, { type: 'deliver', itemId: selected.selectedId!, orderId: selected.orders[selected.orderIndex].id })
+import { loadGame, saveGame, validateState, migrateLegacy, legacyOwned, SAVE_KEY, SAVE_BACKUP_KEY, SAVE_VERSION } from '../src/game/save.ts'
+import type { LegacyState } from '../src/game/legacy.ts'
+const legacyFixtures = JSON.parse(readFileSync(new URL('./fixtures/version1.json', import.meta.url), 'utf8')) as Record<string, LegacyState>
+const W = (slot: number): Location => ({ area: 'warehouse', slot })
+const H = (slot: number): Location => ({ area: 'hero', slot })
+const id = (s: GameState) => currentAdventure(s).id
+const live = (s: GameState) => [...s.slots, ...s.heroSlots, ...s.pendingIncoming].filter((i): i is Item => !!i)
+const ids = (s: GameState) => live(s).map((i) => i.id).sort()
+function move(s: GameState, from: Location, to: Location): GameState {
+  const item = (from.area === 'warehouse' ? s.slots : s.heroSlots)[from.slot]!
+  return gameReducer(s, { type: 'transfer', from, to, itemId: item.id, adventureId: id(s) })
 }
-function fulfill(state: GameState): GameState {
-  for (const line of state.orders[state.orderIndex].lines) {
-    for (let n = 0; n < line.quantity; n++) state = deliverKind(state, line.kind)
-  }
-  return state
+const depart = (s: GameState, now = 1_000_000, seed = 0) => gameReducer(s, { type: 'depart', adventureId: id(s), now, seed })
+const welcome = (s: GameState, seed = 1500) => gameReducer(s, { type: 'return', adventureId: id(s), now: currentAdventure(s).timing!.returnAt, seed })
+function storage(initial: string | null = null) {
+  const map = new Map<string, string>()
+  if (initial !== null) map.set(SAVE_KEY, initial)
+  return { getItem: (key: string) => map.get(key) ?? null, setItem: (key: string, value: string) => { map.set(key, value) } }
 }
-
-test('initial inventory has 96 unique items and twelve of each kind and enough for the first order', () => {
-  const slots = createInventory()
-  assert.equal(slots.length, 96)
-  assert.equal(new Set(slots.map((item) => item!.id)).size, 96)
-  for (const kind of Object.keys(ITEM_TYPES)) {
-    const required = INITIAL_ORDER.lines.filter((line) => line.kind === kind).reduce((sum, line) => sum + line.quantity, 0)
-    assert.ok(slots.filter((item) => item?.kind === kind).length >= required)
-  }
-  assert.deepEqual(slots, createInventory())
-})
-
-test('selection, cancellation and invalid slots never modify inventory', () => {
-  const state = createGame()
-  const selected = gameReducer(state, { type: 'select', slot: 0 })
-  assert.equal(selected.selectedId, state.slots[0]!.id)
-  assert.equal(gameReducer(selected, { type: 'select', slot: 0 }).selectedId, null)
-  assert.deepEqual(ids(gameReducer(selected, { type: 'cancel' })), ids(state))
-  for (const slot of [-1, 96, 1.5, NaN]) assert.equal(gameReducer(selected, { type: 'select', slot }), selected)
-})
-
-test('swapping preserves every unique item and does not mutate the previous state', () => {
-  const initial = createGame()
-  Object.freeze(initial.slots)
-  const moving = gameReducer(gameReducer(initial, { type: 'select', slot: 0 }), { type: 'move' })
-  const swapped = gameReducer(moving, { type: 'select', slot: 95 })
-  assert.equal(swapped.slots[0], initial.slots[95])
-  assert.equal(swapped.slots[95], initial.slots[0])
-  assert.deepEqual(ids(swapped), ids(initial))
-  assert.equal(swapped.selectedId, null)
-  assert.equal(swapped.moving, false)
-  const cancelled = gameReducer(moving, { type: 'select', slot: 0 })
-  assert.equal(cancelled.slots, initial.slots)
-  assert.equal(cancelled.moving, false)
-})
-
-test('a valid delivery removes exactly its item, leaves an empty slot, and rejects repeated/stale actions', () => {
-  const initial = createGame()
-  const slot = initial.slots.findIndex((item) => item?.kind === 'sword')
-  const selected = gameReducer(initial, { type: 'select', slot })
-  const action = { type: 'deliver', itemId: selected.selectedId!, orderId: 'day-1' } as const
-  const delivered = gameReducer(selected, action)
-  assert.equal(delivered.slots[slot], null)
-  assert.equal(delivered.delivered.sword, 1)
-  assert.equal(ids(delivered).length, 95)
-  assert.equal(delivered.totalDelivered, 1)
-  assert.equal(gameReducer(delivered, action), delivered)
-  const reselection = gameReducer(delivered, { type: 'select', slot: delivered.slots.findIndex(Boolean) })
-  assert.equal(gameReducer(reselection, action), reselection)
-  assert.equal(initial.slots[slot]!.id, action.itemId)
-})
-
-test('wrong kinds, excess quantities and moving mode cannot consume an item', () => {
-  const initial = createGame()
-  const wrong = deliverKind(initial, 'staff')
-  assert.deepEqual(ids(wrong), ids(initial))
-  assert.equal(wrong.totalDelivered, 0)
-  assert.match(wrong.notice, /必要ありません/)
-  const once = deliverKind(initial, 'sword')
-  const excess = deliverKind(once, 'sword')
-  assert.deepEqual(ids(excess), ids(once))
-  assert.equal(excess.delivered.sword, 1)
-  const moving = gameReducer(gameReducer(initial, { type: 'select', slot: 0 }), { type: 'move' })
-  assert.equal(gameReducer(moving, { type: 'deliver', itemId: moving.selectedId!, orderId: 'day-1' }), moving)
-})
-
-test('a selected item can move into an empty slot without changing stock or order progress', () => {
-  const delivered = deliverKind(createGame(), 'sword')
-  const empty = delivered.slots.findIndex((item) => item === null)
-  const origin = delivered.slots.findIndex(Boolean)
-  const moving = gameReducer(gameReducer(delivered, { type: 'select', slot: origin }), { type: 'move' })
-  const moved = gameReducer(moving, { type: 'select', slot: empty })
-  assert.equal(moved.slots[origin], null)
-  assert.equal(moved.slots[empty], delivered.slots[origin])
-  assert.deepEqual(ids(moved), ids(delivered))
-  assert.deepEqual(moved.delivered, delivered.delivered)
-})
-
-test('only completed orders advance; repeated next events cannot skip an order or restore stock', () => {
-  const initial = createGame()
-  const next = { type: 'next', orderId: 'day-1', seed: 1 } as const
-  assert.equal(gameReducer(initial, next), initial)
-  const complete = fulfill(initial)
-  assert.ok(isOrderComplete(complete))
-  assert.equal(gameReducer(complete, next), complete, 'return must happen before next day')
-  const returned = gameReducer(complete, { type: 'return', orderId: 'day-1', seed: 1500 })
-  const advanced = gameReducer(returned, next)
-  assert.equal(advanced.orderIndex, 1)
-  assert.equal(advanced.slots, returned.slots)
-  assert.deepEqual(advanced.delivered, {})
-  assert.equal(gameReducer(advanced, next), advanced)
-  assert.equal(gameReducer(advanced, { type: 'deliver', itemId: 'item-1', orderId: 'day-1' }), advanced)
-})
-
-test('many daily orders remain solvable, keep positions and ledgers, and reject stale actions', () => {
-  let state = createGame()
-  for (let day = 1; day <= 120; day++) {
-    const order = state.orders[state.orderIndex]
-    assert.equal(order.id, `day-${day}`)
-    state = fulfill(state)
-    assert.ok(isOrderComplete(state))
-    state = gameReducer(state, { type: 'return', orderId: order.id, seed: day * 777 })
-    assert.ok(canAdvanceDay(state))
-    const next = gameReducer(state, { type: 'next', orderId: order.id, seed: day * 53 })
-    assert.equal(next.slots, state.slots)
-    assert.equal(next.pendingIncoming, state.pendingIncoming)
-    assert.equal(next.issuedByOrder, state.issuedByOrder)
-    assert.equal(next.returnHistory, state.returnHistory)
-    assert.equal(gameReducer(next, { type: 'return', orderId: order.id, seed: 5 }), next)
-    const all = [...ids(next), ...next.pendingIncoming.map((i) => i.id)]
-    assert.equal(new Set(all).size, all.length)
-    state = next
-  }
-  assert.deepEqual(gameReducer(state, { type: 'reset' }), createGame())
-})
-
-test('return is available only for completed orders and records each expedition exactly once', () => {
-  const initial = createGame()
-  const action = { type: 'return', orderId: 'day-1', seed: 1500 } as const
-  assert.equal(getReturnableOrder(initial), null)
-  assert.equal(gameReducer(initial, action), initial)
-  const complete = fulfill(initial)
-  assert.equal(gameReducer(complete, { ...action, orderId: 'day-2' }), complete)
-  const returned = gameReducer(complete, action)
-  assert.deepEqual(returned.returnedOrderIds, ['day-1'])
-  assert.equal(gameReducer(returned, action), returned)
-  assert.equal(getReturnableOrder(returned), null)
-  assert.equal(returned.orderIndex, 0)
-  assert.deepEqual(returned.delivered, complete.delivered)
-})
-
-test('equipment returns with its original identity; consumables are used and loot has unique IDs', () => {
-  const complete = fulfill(createGame())
-  const issued = complete.issuedByOrder['day-1']!
-  Object.freeze(complete.slots)
-  Object.freeze(issued)
-  const action = { type: 'return', orderId: 'day-1', seed: 1500 } as const
-  const returned = gameReducer(complete, action)
-  assert.deepEqual(returned, gameReducer(complete, action), 'explicit randomness is reproducible')
-  const all = [...returned.slots.filter((item) => item !== null), ...returned.pendingIncoming]
-  for (const item of issued) {
-    if (ITEM_TYPES[item.kind].category === '消耗品') assert.ok(!all.some((candidate) => candidate.id === item.id))
-    else assert.equal(all.find((candidate) => candidate.id === item.id), item)
-  }
-  assert.equal(returned.lastReturn!.equipmentCount, 2)
-  assert.equal(returned.lastReturn!.consumedCount, 2)
-  assert.ok(returned.lastReturn!.lootCount >= 2 && returned.lastReturn!.lootCount <= 4)
-  assert.equal(all.length, 96 - 2 + returned.lastReturn!.lootCount)
-  assert.equal(new Set(all.map((item) => item.id)).size, all.length)
-  assert.match(returned.lastReturn!.comment, /ただいま|戻った|寄り道/)
-  assert.equal(complete.issuedByOrder['day-1']!.length, 4, 'previous state is untouched')
-})
-
-test('incoming items only fill random empty slots and preserve every arranged occupied slot', () => {
-  let state = createGame()
-  state = gameReducer(gameReducer(gameReducer(state, { type: 'select', slot: 0 }), { type: 'move' }), { type: 'select', slot: 90 })
-  const complete = fulfill(state)
-  const returned = gameReducer(complete, { type: 'return', orderId: 'day-1', seed: 1500 })
-  for (const [slot, item] of complete.slots.entries()) if (item) assert.equal(returned.slots[slot], item)
-  assert.equal(returned.slots.length, 96)
-  const batch = createReturnBatch('test', [], 1500)
-  const slots = Array(12).fill(null)
-  assert.notDeepEqual(placeIncoming(slots, batch.items, 1).slots, placeIncoming(slots, batch.items, 2).slots)
-  assert.deepEqual(placeIncoming(slots, batch.items, 1), placeIncoming(slots, batch.items, 1))
-})
-
-test('overflow stays queued; receiving after deliveries does not reroll or duplicate the batch', () => {
-  const complete = fulfill(createGame())
-  const returned = gameReducer(complete, { type: 'return', orderId: 'day-1', seed: 1500 })
-  assert.equal(ids(returned).length, 96)
-  assert.equal(returned.pendingIncoming.length, 2)
-  const waitingIds = returned.pendingIncoming.map((item) => item.id)
-  const noRoom = gameReducer(returned, { type: 'receive', seed: 9 })
-  assert.equal(noRoom.slots, returned.slots)
-  assert.equal(noRoom.pendingIncoming, returned.pendingIncoming)
-  let next = gameReducer(noRoom, { type: 'next', orderId: 'day-1', seed: 1 })
-  assert.deepEqual(next.pendingIncoming, returned.pendingIncoming)
-  next = deliverKind(next, next.orders[next.orderIndex].lines[0].kind)
-  const received = gameReducer(next, { type: 'receive', seed: 4 })
-  assert.equal(received.pendingIncoming.length, 1)
-  assert.ok(ids(received).includes(waitingIds[0]))
-  assert.equal(received.pendingIncoming[0].id, waitingIds[1])
-  assert.equal(received.lastReturn, returned.lastReturn)
-  const repeated = gameReducer(received, { type: 'receive', seed: 4 })
-  assert.deepEqual(repeated.slots, received.slots)
-  assert.deepEqual(repeated.pendingIncoming, received.pendingIncoming)
-  assert.equal(gameReducer(repeated, { type: 'return', orderId: 'day-1', seed: 123 }), repeated)
-})
-
-test('a completely full warehouse retains the entire incoming batch without mutation', () => {
-  const state = createGame()
-  const incoming = createReturnBatch('full-test', [], 1500).items
-  Object.freeze(state.slots)
-  Object.freeze(incoming)
-  const result = placeIncoming(state.slots, incoming, 2)
-  assert.deepEqual(result.slots, state.slots)
-  assert.deepEqual(result.pendingIncoming, incoming)
-  assert.equal(result.placed, 0)
-  const oneEmpty = [...state.slots]
-  oneEmpty[42] = null
-  const partial = placeIncoming(oneEmpty, result.pendingIncoming, 8)
-  assert.equal(partial.slots[42], incoming[0])
-  assert.deepEqual(partial.pendingIncoming, incoming.slice(1))
-})
-
-test('new order generation respects even scarce consumable-only stock', () => {
-  const slots = [{ id: 'only-one', kind: 'herb' as const }]
-  const order = createDailyOrder(400, slots, 72)
-  assert.deepEqual(order.lines, [{ kind: 'herb', quantity: 1 }])
-  assert.equal(order.id, 'day-400')
-  assert.deepEqual(createDailyOrder(400, slots, 72), order)
-})
-
-// Persistence tests use the public storage boundary; no browser dependency.
-import { loadGame, saveGame, validateState, SAVE_KEY, SAVE_VERSION } from '../src/game/save.ts'
-function memoryStorage(initial: string | null = null) {
-  let data = initial
-  return { getItem: (_key: string) => data, setItem: (_key: string, next: string) => { data = next } }
-}
-function roundTrip(state: GameState) {
-  const storage = memoryStorage()
-  saveGame(storage, state)
-  const loaded = loadGame(storage)
+function roundTrip(s: GameState) {
+  const memory = storage(); saveGame(memory, s)
+  const loaded = loadGame(memory)
   assert.equal(loaded.blocked, false)
-  assert.deepEqual(loaded.state, { ...state, selectedId: null, moving: false, notice: '倉庫の記録を復元しました。続きから遊べます。' })
+  assert.deepEqual(loaded.state, { ...s, selection: null, moving: false, notice: '倉庫と冒険の記録を復元しました。' })
   return loaded.state
 }
 
-test('autosave round trips initial, partial issue, complete issue, return, overflow and next day', () => {
-  let state = roundTrip(createGame())
-  state = roundTrip(deliverKind(state, 'sword'))
-  state = roundTrip(deliverKind(state, 'shield'))
-  state = roundTrip(deliverKind(state, 'potion'))
-  state = roundTrip(deliverKind(state, 'potion'))
-  state = roundTrip(gameReducer(state, { type: 'return', orderId: 'day-1', seed: 1500 }))
-  assert.equal(state.pendingIncoming.length, 2)
-  assert.equal(gameReducer(state, { type: 'return', orderId: 'day-1', seed: 1500 }), state)
-  state = roundTrip(gameReducer(state, { type: 'next', orderId: 'day-1', seed: 8 }))
-  const selected = gameReducer(state, { type: 'select', slot: state.slots.findIndex(Boolean) })
-  roundTrip(gameReducer(selected, { type: 'move' }))
+test('initial warehouse keeps 96 unique items, twelve per kind and eight empty hero slots', () => {
+  const s = createGame()
+  assert.equal(s.slots.length, 96); assert.equal(s.heroSlots.length, HERO_CAPACITY)
+  assert.equal(new Set(ids(s)).size, 96)
+  for (const kind of Object.keys(ITEM_TYPES)) assert.equal(s.slots.filter((i) => i?.kind === kind).length, 12)
+  assert.deepEqual(s, createGame()); assert.equal(phase(s, 0), 'preparing')
 })
-
-test('resuming 100 consecutive days conserves every item and prevents repeating old returns', () => {
-  let state = createGame()
-  for (let i = 1; i <= 100; i++) {
-    state = roundTrip(fulfill(state))
-    const orderId = state.orders[state.orderIndex].id
-    state = roundTrip(gameReducer(state, { type: 'return', orderId, seed: i * 129 }))
-    assert.equal(gameReducer(state, { type: 'return', orderId, seed: i * 129 }), state)
-    state = roundTrip(gameReducer(state, { type: 'next', orderId, seed: i * 521 }))
-    state = roundTrip(gameReducer(state, { type: 'receive', seed: 7 }))
+test('any kind can be prepared and returned with its original identity and no mutations', () => {
+  let s = createGame(); const original = s
+  for (const kind of Object.keys(ITEM_TYPES)) {
+    const at = s.slots.findIndex((i) => i?.kind === kind)
+    s = move(s, W(at), H(0)); assert.equal(s.heroSlots[0]?.kind, kind)
+    s = move(s, H(0), W(at)); assert.equal(s.slots[at]?.kind, kind)
+    assert.deepEqual(ids(s), ids(original))
   }
-  assert.equal(state.orderIndex, 100)
-  assert.equal(state.returnHistory.length, 100)
+  assert.deepEqual(s.slots, original.slots)
 })
-
-test('missing storage starts fresh; corrupt and incompatible records remain untouched', () => {
-  assert.deepEqual(loadGame(memoryStorage()).state, createGame())
-  for (const raw of ['{', 'null', '[]', JSON.stringify({ version: SAVE_VERSION, state: {} }),
-    JSON.stringify({ version: 0, state: createGame() }), JSON.stringify({ version: 999, state: createGame() })]) {
-    const storage = memoryStorage(raw)
-    const result = loadGame(storage)
-    assert.equal(result.blocked, true)
-    assert.equal(storage.getItem(SAVE_KEY), raw)
-    assert.deepEqual(result.state, createGame())
+test('occupied/empty warehouse and cross-inventory swaps conserve stock, even at capacity', () => {
+  let s = createGame(); Object.freeze(s.slots)
+  const a = s.slots[0], b = s.slots[95]
+  s = move(s, W(0), W(95)); assert.equal(s.slots[0], b); assert.equal(s.slots[95], a)
+  for (let i = 0; i < 8; i++) s = move(s, W(i), H(i))
+  const action = { type: 'transfer', from: W(90), to: H(8), itemId: s.slots[90]!.id, adventureId: id(s) } as const
+  assert.equal(gameReducer(s, action), s)
+  const hero = s.heroSlots[0], warehouse = s.slots[90]
+  s = move(s, W(90), H(0)); assert.equal(s.heroSlots[0], warehouse); assert.equal(s.slots[90], hero)
+  s = move(s, H(0), H(7))
+  assert.equal(ids(s).length, 96); assert.equal(new Set(ids(s)).size, 96)
+})
+test('selection is inspection; tap move supports swapping, empty slots and cancellation', () => {
+  const initial = createGame()
+  let s = gameReducer(initial, { type: 'select', at: W(0) })
+  assert.equal(s.slots, initial.slots); assert.equal(s.selection?.itemId, initial.slots[0]!.id)
+  s = gameReducer(s, { type: 'move' }); s = gameReducer(s, { type: 'select', at: H(0) })
+  assert.equal(s.heroSlots[0], initial.slots[0]); assert.equal(s.selection, null)
+  s = gameReducer(s, { type: 'select', at: H(0) }); s = gameReducer(s, { type: 'move' })
+  s = gameReducer(s, { type: 'select', at: W(0) }); assert.deepEqual(s.slots, initial.slots)
+  s = gameReducer(s, { type: 'select', at: W(1) }); s = gameReducer(s, { type: 'move' })
+  s = gameReducer(s, { type: 'select', at: W(1) }); assert.equal(s.moving, false)
+  s = gameReducer(s, { type: 'cancel' }); assert.equal(s.selection, null)
+})
+test('invalid, same-cell, stale ID, and previous-day transfers cannot change stock', () => {
+  const s = createGame()
+  const base = { type: 'transfer', from: W(0), to: H(0), itemId: s.slots[0]!.id, adventureId: id(s) } as const
+  for (const action of [{ ...base, to: W(0) }, { ...base, to: W(-1) }, { ...base, to: H(NaN) },
+    { ...base, itemId: 'wrong' }, { ...base, adventureId: 'day-0' }, { ...base, from: W(100) }]) assert.equal(gameReducer(s, action), s)
+  const moved = gameReducer(s, base); assert.equal(gameReducer(moved, base), moved)
+})
+test('departure commits once, persists exact 60..180 seconds and locks hero inventory', () => {
+  let s = move(createGame(), W(0), H(0)); const prepared = s
+  s = depart(s); assert.equal(phase(s, 1_000_000), 'away')
+  assert.deepEqual(currentAdventure(s).timing, { startedAt: 1_000_000, durationMs: 60000, returnAt: 1_060_000 })
+  assert.equal(depart(s, 2_000_000, 120), s)
+  assert.equal(move(s, H(0), W(0)), s); assert.equal(move(s, W(1), H(1)), s)
+  assert.notEqual(move(s, W(1), W(2)), s)
+  assert.equal(currentAdventure(s).issued[0], prepared.heroSlots[0])
+  for (let seed = 0; seed <= 120; seed++) assert.equal(currentAdventure(depart(createGame(), 0, seed)).timing!.durationMs, (60 + seed) * 1000)
+  for (const now of [NaN, Infinity, -1, Number.MAX_SAFE_INTEGER]) assert.equal(depart(prepared, now), prepared)
+})
+test('empty preparation can depart; no inventory can cause a softlock', () => {
+  let s = depart(createGame())
+  assert.equal(currentAdventure(s).issued.length, 0)
+  s = welcome(s); assert.equal(s.pendingIncoming.length, 4)
+  assert.equal(phase(s, 0), 'returned')
+})
+test('deadline gates return, repeats/stale next and return actions do not rerun anything', () => {
+  const s = depart(move(createGame(), W(0), H(0)))
+  assert.equal(phase(s, 1_059_999), 'away'); assert.equal(phase(s, 1_060_000), 'ready')
+  const early: GameAction = { type: 'return', adventureId: id(s), now: 1_059_999, seed: 1 }
+  assert.equal(gameReducer(s, early), s)
+  assert.equal(gameReducer(s, { type: 'next', adventureId: id(s) }), s)
+  const returned = welcome(s)
+  assert.equal(gameReducer(returned, { ...early, now: 1_500_000 }), returned)
+  const next = gameReducer(returned, { type: 'next', adventureId: id(s) })
+  assert.equal(next.day, 2); assert.equal(next.slots, returned.slots); assert.equal(next.pendingIncoming, returned.pendingIncoming)
+  assert.equal(gameReducer(next, { type: 'next', adventureId: id(s) }), next)
+  assert.equal(gameReducer(next, { ...early, now: 1_500_000 }), next)
+})
+test('return keeps arranged cells, original equipment IDs, consumes supplies and queues overflow FIFO', () => {
+  let s = createGame()
+  for (const [n, kind] of ['sword','shield','potion','potion'].entries()) s = move(s, W(s.slots.findIndex((i) => i?.kind === kind)), H(n))
+  const away = depart(s)
+  const returned = welcome(away)
+  for (const [slot, i] of away.slots.entries()) if (i) assert.equal(returned.slots[slot], i)
+  const issued = currentAdventure(away).issued
+  for (const i of issued) assert.equal(live(returned).some((candidate) => candidate.id === i.id), ITEM_TYPES[i.kind].category !== '消耗品')
+  assert.equal(returned.pendingIncoming.length, 2)
+  const full = gameReducer(returned, { type: 'receive', seed: 4 })
+  assert.deepEqual(full.pendingIncoming, returned.pendingIncoming)
+  let next = gameReducer(full, { type: 'next', adventureId: id(full) })
+  next = move(next, W(0), H(0))
+  const received = gameReducer(next, { type: 'receive', seed: 3 })
+  assert.equal(received.pendingIncoming.length, 1)
+  assert.ok(received.slots.some((i) => i?.id === returned.pendingIncoming[0].id))
+  // A full warehouse still supports returning a prepared item by exchanging it.
+  const exchanged = move(received, H(0), W(0))
+  assert.equal(exchanged.slots[0], next.heroSlots[0]); assert.equal(exchanged.heroSlots[0], received.slots[0])
+})
+test('full warehouse incoming placement is pure, reproducible and never replaces occupied cells', () => {
+  const s = createGame(), batch = createReturnBatch('test', [], 1500)
+  Object.freeze(s.slots); Object.freeze(batch.items)
+  const full = placeIncoming(s.slots, batch.items, 3)
+  assert.deepEqual(full.slots, s.slots); assert.deepEqual(full.pendingIncoming, batch.items)
+  const empty = [...s.slots]; empty[42] = null
+  const partial = placeIncoming(empty, batch.items, 2)
+  assert.equal(partial.slots[42], batch.items[0]); assert.deepEqual(partial.pendingIncoming, batch.items.slice(1))
+  assert.deepEqual(createReturnBatch('test', [], 1500), batch)
+  assert.notDeepEqual(placeIncoming(Array(96).fill(null), batch.items, 1).slots, placeIncoming(Array(96).fill(null), batch.items, 2).slots)
+})
+test('120 consecutive days and save round trips preserve ownership, positions and history', () => {
+  let s = createGame()
+  for (let day = 1; day <= 120; day++) {
+    s = move(s, W(s.slots.findIndex(Boolean)), H(0)); s = roundTrip(s)
+    s = roundTrip(depart(s, day * 1_000_000, day))
+    const timing = currentAdventure(s).timing
+    s = roundTrip(s); assert.deepEqual(currentAdventure(s).timing, timing)
+    s = roundTrip(welcome(s, day * 129))
+    assert.equal(new Set(ids(s)).size, ids(s).length)
+    const slots = s.slots, pending = s.pendingIncoming
+    s = roundTrip(gameReducer(s, { type: 'next', adventureId: id(s) }))
+    assert.deepEqual(s.slots, slots); assert.deepEqual(s.pendingIncoming, pending)
+  }
+  assert.equal(s.day, 121); assert.equal(s.adventures.length, 121)
+  assert.deepEqual(gameReducer(s, { type: 'reset' }), createGame())
+})
+test('save/load clears only transient selection; no deadline or return is rerolled', () => {
+  let s = move(createGame(), W(0), H(0))
+  s = gameReducer(s, { type: 'select', at: W(1) }); s = gameReducer(s, { type: 'move' })
+  s = roundTrip(s); assert.equal(s.selection, null)
+  s = roundTrip(depart(s, 5000, 75)); assert.equal(phase(s, 9999999), 'ready')
+  s = roundTrip(welcome(s)); const saved = s
+  assert.equal(welcome(s), saved)
+})
+test('version 1 initial, partial, completed, returned and next-day saves migrate without item loss', () => {
+  for (const [name, legacy] of Object.entries(legacyFixtures)) {
+    const raw = JSON.stringify({ version: 1, state: legacy })
+    const memory = storage(raw), loaded = loadGame(memory)
+    assert.equal(loaded.blocked, false, name)
+    assert.equal(memory.getItem(SAVE_KEY), raw, 'load does not overwrite the original')
+    assert.equal(memory.getItem(SAVE_BACKUP_KEY), raw)
+    assert.deepEqual(loaded.state.slots, legacy.slots)
+    assert.deepEqual(ids(loaded.state), legacyOwned(legacy).map((i) => i.id).sort())
+    assert.equal(loaded.state.day, legacy.orderIndex + 1)
+    const resumed = roundTrip(loaded.state)
+    if (name === 'returned') {
+      assert.equal(phase(resumed, 0), 'returned')
+      assert.equal(gameReducer(resumed, { type: 'return', adventureId: id(resumed), now: 999999999, seed: 0 }), resumed)
+    } else assert.equal(phase(resumed, 0), 'preparing')
+    assert.equal(resumed.legacy!.returnHistory.length, legacy.returnHistory.length)
   }
 })
-
-test('restoration rejects missing/duplicated stock, inconsistent ledgers, bogus IDs, quantities and reports', () => {
-  const returned = gameReducer(fulfill(createGame()), { type: 'return', orderId: 'day-1', seed: 1500 })
-  const corruptions = [
-    (s: any) => { s.slots[0] = s.slots[1] },
-    (s: any) => { s.slots[0] = null },
-    (s: any) => { s.pendingIncoming.push(s.slots[0]) },
-    (s: any) => { s.pendingIncoming[0].kind = 'unknown' },
-    (s: any) => { s.slots[0].id = 'loot-day-999-1' },
-    (s: any) => { s.delivered.sword = 100 },
-    (s: any) => { s.totalDelivered++ },
-    (s: any) => { s.orderIndex++ },
-    (s: any) => { s.orders[0].lines[0].quantity = -1 },
-    (s: any) => { s.issuedByOrder['day-1'] = [] },
-    (s: any) => { s.returnedOrderIds = [] },
-    (s: any) => { s.returnHistory[0].report.lootCount++ },
-    (s: any) => { s.returnHistory[0].items.pop() },
-    (s: any) => { s.lastReturn = null },
+test('migration queues a ninth legacy supplied item safely instead of exceeding hero capacity', () => {
+  const legacy = structuredClone(legacyFixtures.returned) as any
+  const kinds = ['sword','shield','staff']
+  const issued: Item[] = []
+  for (const kind of kinds) for (let n = 0; n < 3; n++) {
+    const slot = legacy.slots.findIndex((i: Item | null) => i?.kind === kind)
+    issued.push(legacy.slots[slot]); legacy.slots[slot] = null
+  }
+  legacy.orderIndex = 1; legacy.orders.push({ id: 'day-2', title: '旧注文', message: '旧注文', lines: kinds.map((kind) => ({kind,quantity:3})) })
+  legacy.delivered = {sword:3,shield:3,staff:3}; legacy.totalDelivered += 9; legacy.issuedByOrder['day-2'] = issued
+  const migrated = roundTrip(migrateLegacy(legacy))
+  assert.equal(migrated.heroSlots.filter(Boolean).length, 8)
+  assert.equal(migrated.pendingIncoming.at(-1)!.id, issued[8].id)
+  assert.deepEqual(ids(migrated), legacyOwned(legacy).map((i) => i.id).sort())
+})
+test('corrupt, future, and unbackuppable legacy saves are blocked without overwriting originals', () => {
+  assert.deepEqual(loadGame(storage()).state, createGame())
+  for (const raw of ['{', 'null', JSON.stringify({ version: 999 }), JSON.stringify({version:SAVE_VERSION,state:{}})]) {
+    const memory = storage(raw); assert.equal(loadGame(memory).blocked, true); assert.equal(memory.getItem(SAVE_KEY), raw)
+  }
+  const raw = JSON.stringify({version:1,state:legacyFixtures.partial})
+  const memory = storage(raw)
+  assert.equal(loadGame({...memory,setItem:()=>{throw Error('quota')}}).blocked, true)
+  assert.equal(memory.getItem(SAVE_KEY), raw)
+})
+test('validator rejects time tampering, changed locked cargo, duplicate/lost stock and corrupted history', () => {
+  const away = depart(move(createGame(), W(0), H(0)))
+  const returned = welcome(away)
+  const changes: ((s: any) => void)[] = [
+    (s) => {s.slots[1]=s.slots[2]}, (s) => {s.slots[1]=null},
+    (s) => {s.heroSlots.push(null)}, (s) => {s.day++},
+    (s) => {s.adventures[0].returned.items.pop()}, (s) => {s.adventures[0].returned.report.lootCount++},
+    (s) => {s.adventures[0].timing.returnAt++}, (s) => {s.adventures[0].timing.durationMs=0},
+    (s) => {s.adventures[0].issued[0].id='fake'}, (s) => {s.pendingIncoming.push(s.slots[1])},
   ]
-  for (const corrupt of corruptions) {
-    const candidate = structuredClone(returned)
-    corrupt(candidate)
-    assert.throws(() => validateState(candidate))
-  }
+  for (const corrupt of changes) { const copy=structuredClone(returned); corrupt(copy); assert.throws(()=>validateState(copy)) }
+  const wrongCargo = structuredClone(away) as any; wrongCargo.heroSlots[0]=null
+  assert.throws(()=>validateState(wrongCargo))
 })
-
-test('unreadable storage is protected and write failure never changes the live state', () => {
-  const storage = { getItem: () => { throw new Error('denied') }, setItem: () => { throw new Error('quota') } }
-  assert.equal(loadGame(storage).blocked, true)
-  const state = deliverKind(createGame(), 'sword')
-  const snapshot = structuredClone(state)
-  assert.throws(() => saveGame(storage, state), /quota/)
-  assert.deepEqual(state, snapshot)
+test('storage read/write errors never mutate the live state or silently destroy saves', () => {
+  const fail = { getItem:()=>{throw Error('denied')}, setItem:()=>{throw Error('quota')} }
+  assert.equal(loadGame(fail).blocked, true)
+  const s = depart(createGame()), before = structuredClone(s)
+  assert.throws(()=>saveGame(fail,s),/quota/); assert.deepEqual(s,before)
 })

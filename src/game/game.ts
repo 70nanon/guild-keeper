@@ -1,135 +1,141 @@
-import { createInventory, ITEM_TYPES, INITIAL_ORDER } from './data.ts'
-import type { Item, ItemKind, Order } from './data.ts'
+import { createInventory, ITEM_TYPES } from './data.ts'
+import type { Item } from './data.ts'
 import { createReturnBatch, placeIncoming } from './arrivals.ts'
-import type { ReturnReport } from './arrivals.ts'
-import { createDailyOrder } from './orders.ts'
+import type { LegacyState } from './legacy.ts'
 
+export const HERO_CAPACITY = 8
+export type Area = 'warehouse' | 'hero'
+export type Location = Readonly<{ area: Area; slot: number }>
+export type ReturnBatch = ReturnType<typeof createReturnBatch>
+export type Adventure = Readonly<{
+  id: string; title: string; message: string
+  issued: readonly Item[]
+  timing: Readonly<{ startedAt: number; durationMs: number; returnAt: number }> | null
+  returned: ReturnBatch | null
+}>
 export type GameState = Readonly<{
   slots: readonly (Item | null)[]
-  orders: readonly Order[]
-  returnHistory: readonly Readonly<{ items: readonly Item[]; report: ReturnReport }>[]
-  orderIndex: number
-  delivered: Readonly<Partial<Record<ItemKind, number>>>
-  totalDelivered: number
-  issuedByOrder: Readonly<Partial<Record<string, readonly Item[]>>>
-  returnedOrderIds: readonly string[]
+  heroSlots: readonly (Item | null)[]
+  day: number
+  adventures: readonly Adventure[]
   pendingIncoming: readonly Item[]
-  lastReturn: ReturnReport | null
-  selectedId: string | null
+  legacy: LegacyState | null
+  selection: Readonly<{ itemId: string; at: Location }> | null
   moving: boolean
   notice: string
 }>
-
 export type GameAction =
-  | { type: 'select'; slot: number }
-  | { type: 'move' }
-  | { type: 'cancel' }
-  | { type: 'deliver'; itemId: string; orderId: string }
-  | { type: 'next'; orderId: string; seed: number }
-  | { type: 'return'; orderId: string; seed: number }
+  | { type: 'select'; at: Location }
+  | { type: 'move' } | { type: 'cancel' }
+  | { type: 'transfer'; from: Location; to: Location; itemId: string; adventureId: string }
+  | { type: 'depart'; adventureId: string; now: number; seed: number }
+  | { type: 'return'; adventureId: string; now: number; seed: number }
+  | { type: 'next'; adventureId: string }
   | { type: 'receive'; seed: number }
   | { type: 'reset' }
 
+const plans = [
+  { title: '街道の見回り', message: '今日は村の先の街道を見てくるよ。持っていく道具は任せた！' },
+  { title: '森での採集', message: '森へ素材を探しに行くよ。使えそうな品を選んでくれるかな？' },
+  { title: '山道の探索', message: '今日は山道の様子を見てくる。荷物の準備を頼むね。' },
+] as const
+export function createAdventure(day: number): Adventure {
+  return { id: `day-${day}`, ...plans[(day - 1) % plans.length], issued: [], timing: null, returned: null }
+}
 export function createGame(): GameState {
-  return {
-    slots: createInventory(), orders: [INITIAL_ORDER], returnHistory: [], orderIndex: 0, delivered: {}, totalDelivered: 0,
-    issuedByOrder: {}, returnedOrderIds: [], pendingIncoming: [], lastReturn: null,
-    selectedId: null, moving: false,
-    notice: '品を選んで納品。並べ替えるときは「入れ替える」を押してください。',
-  }
+  return { slots: createInventory(), heroSlots: Array(HERO_CAPACITY).fill(null), day: 1,
+    adventures: [createAdventure(1)], pendingIncoming: [], legacy: null, selection: null, moving: false,
+    notice: 'ドラッグで移動・交換。タップでも品を選んで支給・整理できます。' }
 }
-
-export function getSelectedItem(state: GameState) {
-  return state.slots.find((item) => item?.id === state.selectedId) ?? null
+export const currentAdventure = (s: GameState) => s.adventures[s.adventures.length - 1]
+export function inheritedReturn(s: GameState, adventure: Adventure): boolean {
+  return !!s.legacy && adventure.id === `day-${s.legacy.orderIndex + 1}`
+    && s.legacy.returnedOrderIds.includes(adventure.id)
 }
-
-export function isOrderComplete(state: GameState): boolean {
-  return state.orders[state.orderIndex].lines.every(
-    ({ kind, quantity }) => (state.delivered[kind] ?? 0) === quantity,
-  )
+export function hasReturned(s: GameState, a = currentAdventure(s)): boolean {
+  return a.returned !== null || inheritedReturn(s, a)
 }
-
-export function canAdvanceDay(state: GameState): boolean {
-  return isOrderComplete(state) && state.returnedOrderIds.includes(state.orders[state.orderIndex].id)
+export function phase(s: GameState, now: number) {
+  const a = currentAdventure(s)
+  if (hasReturned(s, a)) return 'returned'
+  if (!a.timing) return 'preparing'
+  return now >= a.timing.returnAt ? 'ready' : 'away'
 }
-
-export function getReturnableOrder(state: GameState) {
-  const order = state.orders[state.orderIndex]
-  return isOrderComplete(state) && !state.returnedOrderIds.includes(order.id) ? order : null
+export function itemAt(s: GameState, at: Location): Item | null {
+  if (!at || !['warehouse', 'hero'].includes(at.area) || !Number.isInteger(at.slot)) return null
+  return (at.area === 'warehouse' ? s.slots : s.heroSlots)[at.slot] ?? null
 }
-
-// Every transition validates the current state. UI actions carry the original
-// item and order IDs so repeated/stale events cannot deliver another item/order.
-export function gameReducer(state: GameState, action: GameAction): GameState {
+export function getSelectedItem(s: GameState) {
+  return s.selection && itemAt(s, s.selection.at)?.id === s.selection.itemId ? itemAt(s, s.selection.at) : null
+}
+const same = (a: Location, b: Location) => a.area === b.area && a.slot === b.slot
+const valid = (s: GameState, at: Location) => at && ['warehouse', 'hero'].includes(at.area)
+  && Number.isInteger(at.slot) && at.slot >= 0 && at.slot < (at.area === 'warehouse' ? s.slots.length : s.heroSlots.length)
+export function canTransfer(s: GameState, from: Location, to: Location, itemId: string, adventureId: string): boolean {
+  return adventureId === currentAdventure(s).id && !!valid(s, from) && !!valid(s, to) && !same(from, to)
+    && itemAt(s, from)?.id === itemId
+    && (from.area !== 'hero' && to.area !== 'hero' || (!currentAdventure(s).timing && !hasReturned(s)))
+}
+function transfer(s: GameState, from: Location, to: Location, itemId: string, adventureId: string): GameState {
+  if (!canTransfer(s, from, to, itemId, adventureId)) return s
+  const slots = [...s.slots], heroSlots = [...s.heroSlots]
+  const origin = from.area === 'warehouse' ? slots : heroSlots
+  const target = to.area === 'warehouse' ? slots : heroSlots
+  const occupied = target[to.slot] !== null
+  ;[origin[from.slot], target[to.slot]] = [target[to.slot], origin[from.slot]]
+  return { ...s, slots, heroSlots, selection: null, moving: false,
+    notice: occupied ? 'ふたつの品を交換しました。' : to.area === 'hero' ? '勇者の持ち物に準備しました。出発前なら戻せます。' : '倉庫の空き枠へ移動しました。' }
+}
+function updateAdventure(s: GameState, adventure: Adventure): readonly Adventure[] {
+  return [...s.adventures.slice(0, -1), adventure]
+}
+export function gameReducer(s: GameState, action: GameAction): GameState {
+  const a = currentAdventure(s)
   switch (action.type) {
     case 'select': {
-      if (!Number.isInteger(action.slot) || action.slot < 0 || action.slot >= state.slots.length) return state
-      const target = state.slots[action.slot]
-      const selected = getSelectedItem(state)
-      if (state.moving && selected) {
-        const origin = state.slots.findIndex((item) => item?.id === selected.id)
-        if (origin === action.slot) return { ...state, moving: false, notice: '入れ替えをキャンセルしました。' }
-        const slots = [...state.slots]
-        ;[slots[origin], slots[action.slot]] = [slots[action.slot], slots[origin]]
-        return { ...state, slots, selectedId: null, moving: false,
-          notice: target ? 'ふたつの品を入れ替えました。' : '空き枠へ移動しました。' }
+      if (!valid(s, action.at)) return s
+      if (s.moving && s.selection) {
+        if (same(s.selection.at, action.at)) return { ...s, moving: false, notice: '移動をキャンセルしました。' }
+        return transfer(s, s.selection.at, action.at, s.selection.itemId, a.id)
       }
-      if (!target) return { ...state, notice: '空き枠です。品を選び「入れ替える」で移動できます。' }
-      const selectedId = target.id === state.selectedId ? null : target.id
-      return { ...state, selectedId, moving: false,
-        notice: selectedId ? `${ITEM_TYPES[target.kind].name}を選びました。` : '選択を解除しました。' }
+      const item = itemAt(s, action.at)
+      if (!item) return { ...s, notice: '空き枠です。品を選び「移動・交換」から移せます。' }
+      const deselect = s.selection && same(s.selection.at, action.at) && s.selection.itemId === item.id
+      return { ...s, selection: deselect ? null : { itemId: item.id, at: action.at }, moving: false,
+        notice: deselect ? '選択を解除しました。' : `${ITEM_TYPES[item.kind].name}を選択。「移動・交換」で移動先を選べます。` }
     }
     case 'move':
-      return getSelectedItem(state) ? { ...state, moving: true, notice: '移動先の枠をタップしてください。品があれば入れ替えます。' } : state
-    case 'cancel':
-      return { ...state, selectedId: null, moving: false, notice: '選択を解除しました。' }
-    case 'deliver': {
-      const order = state.orders[state.orderIndex]
-      const selected = getSelectedItem(state)
-      if (action.orderId !== order.id || !selected || selected.id !== action.itemId || state.moving || isOrderComplete(state)) return state
-      const line = order.lines.find(({ kind }) => kind === selected.kind)
-      if (!line || (state.delivered[selected.kind] ?? 0) >= line.quantity) {
-        return { ...state, notice: 'この品は今の注文に必要ありません。在庫はそのままです。' }
-      }
-      const next: GameState = {
-        ...state,
-        slots: state.slots.map((item) => item?.id === selected.id ? null : item),
-        delivered: { ...state.delivered, [selected.kind]: (state.delivered[selected.kind] ?? 0) + 1 },
-        issuedByOrder: { ...state.issuedByOrder, [order.id]: [...(state.issuedByOrder[order.id] ?? []), selected] },
-        totalDelivered: state.totalDelivered + 1, selectedId: null, moving: false,
-        notice: `${ITEM_TYPES[selected.kind].name}を1個納品しました。`,
-      }
-      return isOrderComplete(next)
-        ? { ...next, notice: '注文を完了しました。勇者の帰還を待ちましょう。' }
-        : next
+      return getSelectedItem(s) && (s.selection!.at.area === 'warehouse' || phase(s, 0) === 'preparing')
+        ? { ...s, moving: true, notice: '移動先をタップ。品があれば交換します。勇者の枠にも移せます。' } : s
+    case 'cancel': return { ...s, selection: null, moving: false, notice: '選択を解除しました。' }
+    case 'transfer': return transfer(s, action.from, action.to, action.itemId, action.adventureId)
+    case 'depart': {
+      if (action.adventureId !== a.id || phase(s, action.now) !== 'preparing'
+        || !Number.isSafeInteger(action.now) || action.now < 0 || action.now > Number.MAX_SAFE_INTEGER - 180000) return s
+      const durationMs = (60 + ((action.seed >>> 0) % 121)) * 1000
+      const timing = { startedAt: action.now, durationMs, returnAt: action.now + durationMs }
+      return { ...s, adventures: updateAdventure(s, { ...a, issued: s.heroSlots.filter((i): i is Item => i !== null), timing }),
+        selection: null, moving: false, notice: '勇者が冒険へ出発しました。留守の間も倉庫を整理できます。' }
+    }
+    case 'return': {
+      if (action.adventureId !== a.id || !Number.isSafeInteger(action.now) || phase(s, action.now) !== 'ready') return s
+      const batch = createReturnBatch(a.id, a.issued, action.seed)
+      const incoming = placeIncoming(s.slots, [...s.pendingIncoming, ...batch.items], action.seed)
+      return { ...s, slots: incoming.slots, pendingIncoming: incoming.pendingIncoming,
+        heroSlots: Array(HERO_CAPACITY).fill(null), adventures: updateAdventure(s, { ...a, returned: batch }),
+        selection: null, moving: false,
+        notice: `勇者が帰還。${incoming.placed}個を入庫しました。受取待ちは${incoming.pendingIncoming.length}個です。` }
     }
     case 'next':
-      if (action.orderId !== state.orders[state.orderIndex].id || !canAdvanceDay(state)) return state
-      if (!state.slots.some(Boolean)) return { ...state, notice: '受取待ちを入庫してから翌日へ進んでください。' }
-      return { ...state, orders: [...state.orders, createDailyOrder(state.orderIndex + 2, state.slots, action.seed)], orderIndex: state.orderIndex + 1, delivered: {}, selectedId: null, moving: false,
-        notice: '翌日になりました。新しい注文です。倉庫の配置はそのままです。' }
-    case 'return': {
-      const order = getReturnableOrder(state)
-      if (!order || order.id !== action.orderId) return state
-      const batch = createReturnBatch(order.id, state.issuedByOrder[order.id] ?? [], action.seed)
-      const arrivals = placeIncoming(state.slots, [...state.pendingIncoming, ...batch.items], action.seed)
-      return {
-        ...state, slots: arrivals.slots, pendingIncoming: arrivals.pendingIncoming,
-        returnHistory: [...state.returnHistory, batch],
-        returnedOrderIds: [...state.returnedOrderIds, order.id], lastReturn: batch.report,
-        selectedId: null, moving: false,
-        notice: `勇者が帰還しました。装備${batch.report.equipmentCount}個・戦利品${batch.report.lootCount}個を持ち帰り、${arrivals.placed}個入庫しました。${arrivals.pendingIncoming.length ? `受取待ち${arrivals.pendingIncoming.length}個は保管しています。` : ''}`,
-      }
-    }
+      if (action.adventureId !== a.id || !hasReturned(s)) return s
+      return { ...s, day: s.day + 1, adventures: [...s.adventures, createAdventure(s.day + 1)], selection: null, moving: false,
+        notice: '翌日になりました。倉庫の配置はそのまま。今日の冒険の支度をしましょう。' }
     case 'receive': {
-      if (!state.pendingIncoming.length) return state
-      const arrivals = placeIncoming(state.slots, state.pendingIncoming, action.seed)
-      if (!arrivals.placed) return { ...state, notice: '空き枠がありません。受取待ちの品はそのまま保管しています。' }
-      return { ...state, slots: arrivals.slots, pendingIncoming: arrivals.pendingIncoming,
-        selectedId: null, moving: false,
-        notice: `${arrivals.placed}個を入庫しました。受取待ちは${arrivals.pendingIncoming.length}個です。` }
+      if (!s.pendingIncoming.length) return s
+      const incoming = placeIncoming(s.slots, s.pendingIncoming, action.seed)
+      return { ...s, slots: incoming.slots, pendingIncoming: incoming.pendingIncoming, selection: null, moving: false,
+        notice: incoming.placed ? `${incoming.placed}個を入庫しました。` : '空き枠がありません。受取待ちの品は保管しています。' }
     }
-    case 'reset':
-      return createGame()
+    case 'reset': return createGame()
   }
 }
