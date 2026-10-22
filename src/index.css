@@ -1,14 +1,14 @@
 :root {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --ink: #423322;
-  --ink-muted: #67583f;
-  --paper: #f5ecd3;
-  --paper-edge: #bba77d;
-  --wood-dark: #69482f;
-  --grass: #51613c;
-  --grass-light: #d9e1bd;
+  --ink: #3c3021;
+  --ink-muted: #685a43;
+  --paper: #eee3c3;
+  --paper-edge: #a78f60;
+  --wood-dark: #493925;
+  --grass: #4c5d37;
+  --grass-light: #d9dfb9;
   color: var(--ink);
-  background: #e9e1ce;
+  background: #c5c5a6;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -17,8 +17,7 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
-button { font: inherit; cursor: pointer; touch-action: manipulation; }
-button:disabled { cursor: default; opacity: 1; color: #766c5b; background: #d8cfbb; border-color: #b4a78f; box-shadow: inset 0 -2px 0 #c2b69f; }
-:root button:focus-visible, :root [tabindex]:focus-visible { outline: 3px solid #244c5b; outline-offset: 2px; box-shadow: 0 0 0 2px #fff6df; }
+button { font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+button:disabled { cursor: default; opacity: 1; color: #7d7664; background: #c1bba5; border-color: #a39a80; box-shadow: inset 0 0 0 1px #d5cfb7; }
+:root button:focus-visible, :root [tabindex]:focus-visible { outline: 3px solid #214f63; outline-offset: 1px; box-shadow: 0 0 0 2px #fff4ca; }
 h1, h2, p { margin: 0; }
-button { -webkit-tap-highlight-color: transparent; }

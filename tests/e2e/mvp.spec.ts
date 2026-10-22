@@ -101,3 +101,28 @@ test('small portrait screen keeps the order and actions visible with scrollable 
   await page.keyboard.press('Enter')
   await expect(first).toHaveAttribute('aria-pressed', 'true')
 })
+
+test('the eight kinds use shared original SVGs in inventory, orders and selection', async ({ page, isMobile }) => {
+  await page.goto('./')
+  await expect(page.locator('.item-slot .item-glyph')).toHaveCount(96)
+  const shapes = new Set<string>()
+  for (const kind of ['sword', 'shield', 'potion', 'staff', 'herb', 'helm', 'ether', 'boots']) {
+    const slot = page.locator(`.item-slot[data-kind="${kind}"]`).first()
+    const glyph = slot.locator('svg')
+    await expect(glyph).toHaveAttribute('data-glyph', kind)
+    await expect(glyph).toHaveAttribute('viewBox', '0 0 16 16')
+    await expect(glyph).toHaveAttribute('aria-hidden', 'true')
+    shapes.add(await glyph.innerHTML())
+    if (isMobile) await slot.tap()
+    else await slot.click()
+    await expect(page.locator('.selection-info svg')).toHaveAttribute('data-glyph', kind)
+    expect(await page.locator('.selection-info svg').innerHTML()).toBe(await glyph.innerHTML())
+  }
+  expect(shapes.size).toBe(8)
+  for (const row of await page.locator('.order-lines li').all()) {
+    const kind = await row.locator('svg').getAttribute('data-glyph')
+    const matching = page.locator(`.item-slot[data-kind="${kind}"] svg`).first()
+    expect(await row.locator('svg').innerHTML()).toBe(await matching.innerHTML())
+  }
+  await expect(page.locator('svg text')).toHaveCount(0)
+})

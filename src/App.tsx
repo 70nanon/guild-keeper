@@ -1,6 +1,7 @@
 import { useReducer } from 'react'
 import { ITEM_TYPES, ORDERS } from './game/data'
 import { createGame, gameReducer, getSelectedItem, isFinished, isOrderComplete } from './game/game'
+import { ItemIcon } from './ui/ItemIcon'
 import './App.css'
 
 function App() {
@@ -16,8 +17,8 @@ function App() {
   return (
     <div className="app-shell">
       <header className="site-header">
-        <div className="brand"><span aria-hidden="true">✦</span><h1>Guild Keeper</h1></div>
-        <span className="version">小さな倉庫番の仕事 <span>v0.1</span></span>
+        <div className="brand"><span className="brand-mark" aria-hidden="true">▤</span><h1>Guild Keeper</h1></div>
+        <span className="version">勇者にはならない。勇者を倉庫から支える。<span>v0.1</span></span>
       </header>
 
       <main className="workspace">
@@ -31,7 +32,7 @@ function App() {
               const count = state.delivered[line.kind] ?? 0
               return (
                 <li key={line.kind} className={count === line.quantity ? 'line-complete' : ''}>
-                  <span className="order-item-icon" aria-hidden="true">{type.icon}</span>
+                  <ItemIcon kind={line.kind} className="order-item-icon" />
                   <span>{type.name}</span>
                   <span className="quantity" aria-label={`${type.name} ${line.quantity}個中${count}個納品済み`}>{count} / {line.quantity}<span aria-hidden="true">{count === line.quantity ? ' ✓' : ''}</span></span>
                 </li>
@@ -73,7 +74,7 @@ function App() {
                     data-slot={index}
                     onClick={() => dispatch({ type: 'select', slot: index })}
                   >
-                    {type ? <><span className="item-icon" aria-hidden="true">{type.icon}</span><span className="item-name">{type.name}</span></> : <span className="empty-mark" aria-hidden="true">·</span>}
+                    {type && item ? <><ItemIcon kind={item.kind} className="item-icon" /><span className="item-name">{type.name}</span></> : <span className="empty-mark" aria-hidden="true">·</span>}
                     {active && <span className="selected-mark" aria-hidden="true">✓</span>}
                   </button>
                 )
@@ -82,7 +83,7 @@ function App() {
           </div>
           <div className="action-panel">
             <div className="selection-info">
-              <span className="selection-icon" aria-hidden="true">{selected ? ITEM_TYPES[selected.kind].icon : '◇'}</span>
+              {selected ? <ItemIcon kind={selected.kind} className="selection-icon" /> : <span className="selection-icon empty-selection" aria-hidden="true">◇</span>}
               <div><strong>{selected ? ITEM_TYPES[selected.kind].name : 'アイテムを選択'}</strong><span>{state.moving ? '移動先を選んでください' : selected ? ITEM_TYPES[selected.kind].category : 'タップ・クリックで選べます'}</span></div>
               {selected && <button className="clear-button" aria-label="選択を解除" onClick={() => dispatch({ type: 'cancel' })}>✕</button>}
             </div>
