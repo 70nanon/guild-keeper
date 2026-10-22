@@ -25,8 +25,8 @@ export const INITIAL_ORDER: Order = {
   lines: [{ kind: 'sword', quantity: 1 }, { kind: 'shield', quantity: 1 }, { kind: 'potion', quantity: 2 }],
 }
 
-// Reproducible, mixed placement. Each of the eight kinds has twelve unique items.
-export function createInventory(): (Item | null)[] {
+// Frozen 96-item stock for version 1/2 save validation; never rebalance it.
+export function createLegacyInventory(): (Item | null)[] {
   const kinds = Object.keys(ITEM_TYPES) as ItemKind[]
   const items: Item[] = Array.from({ length: 96 }, (_, index) => ({
     id: `item-${index + 1}`, kind: kinds[index % kinds.length],
@@ -38,4 +38,15 @@ export function createInventory(): (Item | null)[] {
     ;[items[index], items[target]] = [items[target], items[index]]
   }
   return items
+}
+
+export const WAREHOUSE_CAPACITY = 160
+export const INITIAL_ITEM_COUNT = 48
+
+// Six of each kind, mixed reproducibly and spaced across the entire warehouse.
+export function createInventory(): (Item | null)[] {
+  const items = createLegacyInventory().filter((item): item is Item => !!item && Number(item.id.slice(5)) <= INITIAL_ITEM_COUNT)
+  const slots: (Item | null)[] = Array(WAREHOUSE_CAPACITY).fill(null)
+  items.forEach((item, index) => { slots[Math.floor(index * WAREHOUSE_CAPACITY / items.length)] = item })
+  return slots
 }

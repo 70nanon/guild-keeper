@@ -3,7 +3,7 @@ import type { Locator, Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 const key = 'guild-keeper.save'
 const legacy = JSON.parse(readFileSync(new URL('../fixtures/version1.json', import.meta.url), 'utf8'))
-const W = (page: Page, n: number) => page.locator(`[data-area="warehouse"][data-slot="${n}"]`)
+const W = (page: Page, n: number) => page.locator(`[data-area="warehouse"][data-slot="${n*3}"]`)
 const H = (page: Page, n: number) => page.locator(`[data-area="hero"][data-slot="${n}"]`)
 const stock = (page: Page) => page.locator('[data-area="warehouse"][data-item-id]')
 const stored = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).state, key)
@@ -33,11 +33,11 @@ test('tap-only free preparation, mid-adventure sorting, persisted deadlines and 
   let now = new Date('2026-10-22T12:00:00Z').getTime()
   await page.clock.setFixedTime(now)
   await page.goto('./')
-  await expect(stock(page)).toHaveCount(96)
+  await expect(stock(page)).toHaveCount(48)
   await expect(page.getByRole('heading', {name:'勇者の持ち物'})).toBeVisible()
   // Inspection never moves an item; the explicit command prepares it.
   const original = await W(page,0).getAttribute('data-item-id')
-  await activate(W(page,0)); await expect(stock(page)).toHaveCount(96)
+  await activate(W(page,0)); await expect(stock(page)).toHaveCount(48)
   await activate(page.getByRole('button', {name:'勇者へ渡す'}))
   await expect(H(page,0)).toHaveAttribute('data-item-id', original!)
   await page.reload(); await expect(H(page,0)).toHaveAttribute('data-item-id', original!)
@@ -138,7 +138,7 @@ test('real touch scrolling before a hold works; held edge drag auto-scrolls with
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
   await expect.poll(()=>region.evaluate((e)=>e.scrollTop)).toBeGreaterThan(30)
   await expect(page.locator('.drag-ghost')).toHaveCount(0)
-  await expect(stock(page)).toHaveCount(96)
+  await expect(stock(page)).toHaveCount(48)
   await region.evaluate((e)=>{e.scrollTop=0})
   await page.waitForTimeout(500)
   const from=await point(W(page,0))
@@ -151,7 +151,7 @@ test('real touch scrolling before a hold works; held edge drag auto-scrolls with
   // Cancel off-grid; auto-scroll and the floating preview must stop.
   await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]})
   await expect(page.locator('.drag-ghost')).toHaveCount(0)
-  await expect(stock(page)).toHaveCount(96)
+  await expect(stock(page)).toHaveCount(48)
   const stopped=await region.evaluate((e)=>e.scrollTop)
   await page.waitForTimeout(100)
   expect(await region.evaluate((e)=>e.scrollTop)).toBe(stopped)
@@ -161,6 +161,8 @@ test('real touch scrolling before a hold works; held edge drag auto-scrolls with
 test('small screens keep touch targets, keyboard operation and warehouse space', async ({ page }) => {
   for (const viewport of [{width:320,height:568},{width:390,height:664},{width:1280,height:800}]) {
     await page.setViewportSize(viewport); await page.goto('./')
+    await expect(page.locator('[data-area="warehouse"]')).toHaveCount(160)
+    await expect(stock(page)).toHaveCount(48)
     const metrics=await page.evaluate(()=>({
       overflow:document.documentElement.scrollWidth>innerWidth,
       pageOverflow:document.documentElement.scrollHeight>innerHeight,
@@ -179,16 +181,17 @@ test('small screens keep touch targets, keyboard operation and warehouse space',
   }
 })
 
-test('version 1 partial progress migrates with a backup and persists as version 2', async ({ page }) => {
+test('version 1 partial progress gains empty capacity and persists as version 3', async ({ page }) => {
   const old=JSON.stringify({version:1,state:legacy.nextPartial})
   await page.addInitScript(({key,old})=>{if(!localStorage.getItem('fixture-loaded')){localStorage.setItem(key,old);localStorage.setItem('fixture-loaded','yes')}},{key,old})
   await page.goto('./')
   await expect(page.locator('.day-number')).toHaveText('2日目')
   const migrated=await stored(page)
-  expect(migrated.slots).toEqual(legacy.nextPartial.slots)
+  expect(migrated.slots.slice(0,96)).toEqual(legacy.nextPartial.slots)
+  expect(migrated.slots.slice(96)).toEqual(Array(64).fill(null))
   expect(migrated.pendingIncoming).toEqual(legacy.nextPartial.pendingIncoming)
   expect(migrated.heroSlots.filter(Boolean)).toEqual(legacy.nextPartial.issuedByOrder['day-2'])
-  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('guild-keeper.save')!).version)).toBe(2)
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('guild-keeper.save')!).version)).toBe(3)
   expect(await page.evaluate(()=>localStorage.getItem('guild-keeper.save.v1-backup'))).toBe(old)
   await page.reload()
   expect((await stored(page)).heroSlots).toEqual(migrated.heroSlots)
@@ -202,13 +205,13 @@ test('corrupt/future saves are preserved; reset requires confirmation and save f
     page.once('dialog',(dialog)=>dialog.dismiss()); await page.getByRole('button',{name:'記録を初期化して始める'}).click()
     expect(await page.evaluate((key)=>localStorage.getItem(key),key)).toBe(raw)
     page.once('dialog',(dialog)=>dialog.accept()); await page.getByRole('button',{name:'記録を初期化して始める'}).click()
-    await expect(stock(page)).toHaveCount(96)
+    await expect(stock(page)).toHaveCount(48)
   }
   const before=await stored(page)
   await page.evaluate(()=>{Storage.prototype.setItem=()=>{throw new DOMException('quota','QuotaExceededError')}})
   await W(page,0).click(); await page.getByRole('button',{name:'勇者へ渡す'}).click()
   await expect(page.locator('.save-tools summary')).toContainText('未保存の進行が失われます')
-  await expect(stock(page)).toHaveCount(95); expect((await stored(page)).slots).toEqual(before.slots)
+  await expect(stock(page)).toHaveCount(47); expect((await stored(page)).slots).toEqual(before.slots)
 })
 
 test('an open page counts down to ready without reload, and reset clears the saved adventure', async ({ page }) => {
@@ -233,5 +236,36 @@ test('an open page counts down to ready without reload, and reset clears the sav
   await page.reload()
   await expect(page.locator('[data-phase="preparing"]')).toBeVisible()
   expect((await stored(page)).adventures[0].timing).toBeNull()
-  await expect(stock(page)).toHaveCount(96)
+  await expect(stock(page)).toHaveCount(48)
+})
+
+test('version 2 capacity upgrade preserves an active adventure and makes the last empty slot usable', async ({ page, isMobile }) => {
+  const now = new Date('2026-10-22T16:00:00Z').getTime()
+  await page.clock.setFixedTime(now)
+  const slots = structuredClone(legacy.initial.slots)
+  const item = slots[0]; slots[0] = null
+  const adventure = { id:'day-1', title:'旧冒険', message:'冒険中です。', issued:[item],
+    timing:{startedAt:now-30000,durationMs:60000,returnAt:now+30000}, returned:null }
+  const old = JSON.stringify({version:2,state:{slots,heroSlots:[item,...Array(7).fill(null)],day:1,adventures:[adventure],
+    pendingIncoming:[],legacy:null,selection:null,moving:false,notice:''}})
+  await page.addInitScript(({key,old})=>{if(!localStorage.getItem('v2-fixture')){localStorage.setItem(key,old);localStorage.setItem('v2-fixture','1')}},{key,old})
+  await page.goto('./')
+  await expect(page.locator('[data-area="warehouse"]')).toHaveCount(160)
+  await expect(page.locator('.stock-count')).toContainText('/ 160 枠')
+  await expect(page.locator('.adventure-time')).toContainText('残り 0:30')
+  const migrated = await stored(page)
+  expect(migrated.slots.slice(0,96)).toEqual(slots)
+  expect(migrated.slots.slice(96)).toEqual(Array(64).fill(null))
+  expect(migrated.heroSlots[0]).toEqual(item)
+  expect(migrated.adventures[0]).toEqual(adventure)
+  // Tap fallback can reach the final added cell, including on a phone.
+  const activate=(l:Locator)=>isMobile?l.tap():l.click()
+  const source = stock(page).first(), movedId = await source.getAttribute('data-item-id')
+  await activate(source); await activate(page.getByRole('button',{name:'移動・交換'}))
+  const last = page.locator('[data-area="warehouse"][data-slot="159"]')
+  await activate(last)
+  await expect(last).toHaveAttribute('data-item-id',movedId!)
+  await page.reload()
+  await expect(last).toHaveAttribute('data-item-id',movedId!)
+  expect((await stored(page)).adventures[0].timing).toEqual(adventure.timing)
 })
