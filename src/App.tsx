@@ -1,6 +1,7 @@
-import { useReducer } from 'react'
-import { ITEM_TYPES, ORDERS } from './game/data'
-import { createGame, gameReducer, getSelectedItem, getReturnableOrder, isFinished, isOrderComplete } from './game/game'
+import { useEffect, useReducer, useState } from 'react'
+import { ITEM_TYPES } from './game/data'
+import { gameReducer, getSelectedItem, getReturnableOrder, canAdvanceDay, isOrderComplete } from './game/game'
+import { loadGame, saveGame } from './game/save'
 import { ItemIcon } from './ui/ItemIcon'
 import './App.css'
 
@@ -8,12 +9,41 @@ function randomSeed() {
   return crypto.getRandomValues(new Uint32Array(1))[0]
 }
 
+const browserStorage = {
+  getItem: (key: string) => window.localStorage.getItem(key),
+  setItem: (key: string, value: string) => window.localStorage.setItem(key, value),
+}
+
 function App() {
-  const [state, dispatch] = useReducer(gameReducer, undefined, createGame)
-  const order = ORDERS[state.orderIndex]
+  const [loaded] = useState(() => loadGame(browserStorage))
+  const [state, dispatch] = useReducer(gameReducer, loaded.state)
+  const [blocked, setBlocked] = useState(loaded.blocked)
+  const [saveMessage, setSaveMessage] = useState(loaded.message)
+  useEffect(() => {
+    if (blocked) return
+    try {
+      saveGame(browserStorage, state)
+      // oxlint-disable-next-line react/set-state-in-effect -- 外部ストレージへの同期結果を表示する。
+      setSaveMessage('自動保存済み・このブラウザに記録')
+    } catch {
+      setSaveMessage('保存できません。容量・ブラウザ設定を確認してください。再読み込みすると未保存の進行が失われます。')
+    }
+  }, [state, blocked])
+  const reset = () => {
+    if (!window.confirm('保存中の記録を初期化し、1日目から始めますか？')) return
+    dispatch({ type: 'reset' })
+    setBlocked(false)
+  }
+  if (blocked) return <div className="recovery-panel">
+    <h1>Guild Keeper</h1><p role="alert">{saveMessage}</p>
+    <p>既存の記録は上書きしていません。</p>
+    <button className="secondary-button" onClick={() => window.location.reload()}>再読み込み</button>
+    <button className="primary-button" onClick={reset}>記録を初期化して始める</button>
+  </div>
+  const order = state.orders[state.orderIndex]
   const selected = getSelectedItem(state)
   const complete = isOrderComplete(state)
-  const finished = isFinished(state)
+  const nextDay = canAdvanceDay(state)
   const returnable = getReturnableOrder(state)
   const remaining = state.slots.filter(Boolean).length
   const fulfilled = order.lines.reduce((sum, line) => sum + (state.delivered[line.kind] ?? 0), 0)
@@ -23,12 +53,12 @@ function App() {
     <div className="app-shell">
       <header className="site-header">
         <div className="brand"><span className="brand-mark" aria-hidden="true">▤</span><h1>Guild Keeper</h1></div>
-        <span className="version">勇者にはならない。勇者を倉庫から支える。<span>v0.1</span></span>
+        <span className="version">勇者にはならない。勇者を倉庫から支える。<span>継続プレイ MVP</span></span>
       </header>
 
       <main className="workspace">
         <aside className={`order-panel ${complete ? 'order-complete' : ''}`} aria-labelledby="order-title">
-          <div className="order-heading"><span className="eyebrow">勇者 アレンの注文書</span><span className="order-number">{state.orderIndex + 1} / {ORDERS.length}</span></div>
+          <div className="order-heading"><span className="eyebrow">勇者 アレンの注文書</span><span className="order-number">{state.orderIndex + 1}日目</span></div>
           <h2 id="order-title">{order.title}</h2>
           <p className="order-message">{order.message}</p>
           <ul className="order-lines" aria-label="必要なアイテム">
@@ -47,12 +77,8 @@ function App() {
           <div className="order-progress"><span>{complete ? '✓ 注文完了' : '納品状況'}</span><span>{fulfilled} / {requested} 個</span></div>
           {complete && (
             <div className="completion">
-              <p>{finished ? 'すべての注文を届けました！' : 'ありがとう、これで準備は万全だね。'}</p>
-              {finished ? (
-                <button className="primary-button" onClick={() => dispatch({ type: 'reset' })}>最初から遊ぶ</button>
-              ) : (
-                <button className="primary-button" onClick={() => dispatch({ type: 'next', orderId: order.id })}>次の注文へ <span aria-hidden="true">→</span></button>
-              )}
+              <p>{nextDay ? 'おかえり！整理は自由。準備ができたら翌日へ。' : '準備は万全。帰還ボタンで勇者を迎えよう。'}</p>
+              {nextDay && <button className="primary-button" onClick={() => dispatch({ type: 'next', orderId: order.id, seed: randomSeed() })}>翌日へ <span aria-hidden="true">→</span></button>}
             </div>
           )}
           {(returnable || state.lastReturn) && (
@@ -71,6 +97,10 @@ function App() {
               </div>}
             </section>
           )}
+          <div className="save-tools">
+            <p className="save-message" aria-live="polite">{saveMessage}</p>
+            <button className="secondary-button" onClick={reset}>記録を初期化</button>
+          </div>
           <p className="order-hint">品を選ぶ → 納品する<br />並べ替えは「入れ替える」→ 移動先をタップ</p>
         </aside>
 

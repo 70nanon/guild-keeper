@@ -18,23 +18,12 @@ export type Order = Readonly<{
   lines: readonly Readonly<{ kind: ItemKind; quantity: number }>[]
 }>
 
-export const ORDERS: readonly Order[] = [
-  {
-    id: 'departure', title: '旅立ちの支度',
-    message: '街道を進むよ。剣と盾、それから回復薬をお願い。',
-    lines: [{ kind: 'sword', quantity: 1 }, { kind: 'shield', quantity: 1 }, { kind: 'potion', quantity: 2 }],
-  },
-  {
-    id: 'forest', title: '森を抜けるために',
-    message: '次は魔法で道を切り開くよ。杖と魔力の雫、薬草も頼むね。',
-    lines: [{ kind: 'staff', quantity: 1 }, { kind: 'ether', quantity: 2 }, { kind: 'herb', quantity: 1 }],
-  },
-  {
-    id: 'mountain', title: '山道への備え',
-    message: '険しい道に備えて兜と靴を。傷の手当ても忘れずに。',
-    lines: [{ kind: 'helm', quantity: 1 }, { kind: 'boots', quantity: 1 }, { kind: 'potion', quantity: 1 }, { kind: 'herb', quantity: 2 }],
-  },
-]
+// The first day's familiar order is retained; later days are generated from stock.
+export const INITIAL_ORDER: Order = {
+  id: 'day-1', title: '旅立ちの支度',
+  message: '街道を進むよ。剣と盾、それから回復薬をお願い。',
+  lines: [{ kind: 'sword', quantity: 1 }, { kind: 'shield', quantity: 1 }, { kind: 'potion', quantity: 2 }],
+}
 
 // Reproducible, mixed placement. Each of the eight kinds has twelve unique items.
 export function createInventory(): (Item | null)[] {
