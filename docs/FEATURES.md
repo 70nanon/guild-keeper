@@ -61,7 +61,7 @@
 
 F-001・F-002・F-005・F-008〜F-010・F-032〜F-035 の既存機能を対象とする改修です。通常の操作札・説明・品名を外し、同寸法のアイコンセル、単押し詳細内の代替操作、初回案内、出発演出、専用帰還リザルトへ整理します。新規48個だけを先頭へ詰め、既存配置・保存形式version 4・個体・数量は保持します。
 
-仕様は [GAME_DESIGN.md](GAME_DESIGN.md#compact-playtest-ui)。既存ID・依存・チェックは維持し、F-004の識別評価・F-035の未説明の人による発見性評価・F-036は未完了のままです。操作UIがあることと、人が自然に発見できることは区別します。今回の実装PRと検証記録は IMPLEMENTATION_PLAN.md を参照してください。
+仕様は [GAME_DESIGN.md](GAME_DESIGN.md#compact-playtest-ui)。既存ID・依存・チェックは維持し、F-004の識別評価・F-035の未説明の人による発見性評価・F-036は未完了のままです。操作UIがあることと、人が自然に発見できることは区別します。実装は [PR #14](https://github.com/70nanon/guild-keeper/pull/14)、検証記録は IMPLEMENTATION_PLAN.md を参照してください。
 
 ## Phase 0：開発基盤
 
