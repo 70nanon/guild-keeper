@@ -43,10 +43,10 @@ export function createLegacyInventory(): (Item | null)[] {
 export const WAREHOUSE_CAPACITY = 160
 export const INITIAL_ITEM_COUNT = 48
 
-// Six of each kind, mixed reproducibly and spaced across the entire warehouse.
+// Six of each kind, mixed reproducibly and packed into the first 48 slots.
 export function createInventory(): (Item | null)[] {
   const items = createLegacyInventory().filter((item): item is Item => !!item && Number(item.id.slice(5)) <= INITIAL_ITEM_COUNT)
   const slots: (Item | null)[] = Array(WAREHOUSE_CAPACITY).fill(null)
-  items.forEach((item, index) => { slots[Math.floor(index * WAREHOUSE_CAPACITY / items.length)] = item })
+  items.forEach((item, index) => { slots[index] = item })
   return slots
 }

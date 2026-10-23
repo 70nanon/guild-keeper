@@ -98,7 +98,7 @@ export function validateState(value: unknown, version: 2 | 3 | 4 = 4): GameState
   const eligible = new Set([...s.heroSlots, ...s.pendingIncoming].filter((i) => i !== null).map((i) => i.id))
   check(intakeSelection.every((id) => typeof id === 'string' && eligible.has(id))
     && (!intakeSelection.length || a.returned !== null || inheritedReturn({ ...s, legacy }, a)))
-  return { ...s, intakeSelection, initialItemCount, slots: version === 2 ? [...s.slots, ...Array(WAREHOUSE_CAPACITY - s.slots.length).fill(null)] : s.slots, legacy, selection: null, moving: false, notice: '倉庫と冒険の記録を復元しました。' }
+  return { ...s, intakeSelection, initialItemCount, slots: version === 2 ? [...s.slots, ...Array(WAREHOUSE_CAPACITY - s.slots.length).fill(null)] : s.slots, legacy, feedback: null, selection: null, moving: false, notice: '倉庫と冒険の記録を復元しました。' }
 }
 export function loadGame(storage: SaveStorage): LoadedGame {
   let raw: string | null
@@ -127,5 +127,5 @@ export function loadGame(storage: SaveStorage): LoadedGame {
   }
 }
 export function saveGame(storage: SaveStorage, state: GameState): void {
-  storage.setItem(SAVE_KEY, JSON.stringify({ version: SAVE_VERSION, state: { ...state, selection: null, moving: false, notice: '' } }))
+  storage.setItem(SAVE_KEY, JSON.stringify({ version: SAVE_VERSION, state: { ...state, feedback: null, selection: null, moving: false, notice: '' } }))
 }
