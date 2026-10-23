@@ -26,6 +26,7 @@ export type GameState = Readonly<{
   legacy: LegacyState | null
   selection: Readonly<{ itemId: string; at: Location }> | null
   moving: boolean
+  feedback: 'error' | null
   notice: string
 }>
 export type GameAction =
@@ -50,7 +51,7 @@ export function createAdventure(day: number): Adventure {
 }
 export function createGame(): GameState {
   return { initialItemCount: INITIAL_ITEM_COUNT, slots: createInventory(), heroSlots: Array(HERO_CAPACITY).fill(null), day: 1,
-    adventures: [createAdventure(1)], pendingIncoming: [], intakeSelection: [], legacy: null, selection: null, moving: false,
+    adventures: [createAdventure(1)], pendingIncoming: [], intakeSelection: [], feedback: null, legacy: null, selection: null, moving: false,
     notice: 'ドラッグで移動・交換。タップでも品を選んで支給・整理できます。' }
 }
 export const currentAdventure = (s: GameState) => s.adventures[s.adventures.length - 1]
@@ -90,7 +91,7 @@ export function canTransfer(s: GameState, from: Location, to: Location, itemId: 
 }
 function transfer(s: GameState, from: Location, to: Location, itemId: string, adventureId: string): GameState {
   const problem = transferProblem(s, from, to, itemId, adventureId)
-  if (problem) return { ...s, notice: problem }
+  if (problem) return { ...s, notice: problem, feedback: 'error' }
   const slots = [...s.slots], heroSlots = [...s.heroSlots], pending = [...s.pendingIncoming] as (Item | null)[]
   const list = (area: Area) => area === 'warehouse' ? slots : area === 'hero' ? heroSlots : pending
   const origin = list(from.area), target = list(to.area)
@@ -103,7 +104,7 @@ function transfer(s: GameState, from: Location, to: Location, itemId: string, ad
 function updateAdventure(s: GameState, adventure: Adventure): readonly Adventure[] {
   return [...s.adventures.slice(0, -1), adventure]
 }
-export function gameReducer(s: GameState, action: GameAction): GameState {
+function reduceAction(s: GameState, action: GameAction): GameState {
   const a = currentAdventure(s)
   switch (action.type) {
     case 'select': {
@@ -159,7 +160,7 @@ export function gameReducer(s: GameState, action: GameAction): GameState {
       const ids = new Set(s.intakeSelection)
       const items = [...s.heroSlots, ...s.pendingIncoming].filter((i): i is Item => i !== null && ids.has(i.id))
       if (items.length !== ids.size) return s
-      if (items.length > s.slots.filter((i) => i === null).length) return { ...s, notice: '倉庫の空きが足りません。選択数を減らすか空きを作ってください。' }
+      if (items.length > s.slots.filter((i) => i === null).length) return { ...s, feedback: 'error', notice: '倉庫の空きが足りません。選択数を減らすか空きを作ってください。' }
       const incoming = placeIncoming(s.slots, items, action.seed)
       return { ...s, slots: incoming.slots, heroSlots: s.heroSlots.map((i) => i && ids.has(i.id) ? null : i),
         pendingIncoming: s.pendingIncoming.filter((i) => !ids.has(i.id)), intakeSelection: [], selection: null, moving: false,
@@ -167,4 +168,10 @@ export function gameReducer(s: GameState, action: GameAction): GameState {
     }
     case 'reset': return createGame()
   }
+}
+
+export function gameReducer(s: GameState, action: GameAction): GameState {
+  const clean = s.feedback ? { ...s, feedback: null } : s
+  const next = reduceAction(clean, action)
+  return next === clean ? s : next
 }

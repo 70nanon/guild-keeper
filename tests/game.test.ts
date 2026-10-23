@@ -14,7 +14,7 @@ const H = (slot: number): Location => ({ area: 'hero', slot })
 const id = (s: GameState) => currentAdventure(s).id
 const live = (s: GameState) => [...s.slots, ...s.heroSlots, ...s.pendingIncoming].filter((i): i is Item => !!i)
 const ids = (s: GameState) => live(s).map((i) => i.id).sort()
-const unchanged = (actual: GameState, expected: GameState) => assert.deepEqual({ ...actual, notice: expected.notice }, expected)
+const unchanged = (actual: GameState, expected: GameState) => assert.deepEqual({ ...actual, feedback: expected.feedback, notice: expected.notice }, expected)
 function move(s: GameState, from: Location, to: Location): GameState {
   const item = (from.area === 'warehouse' ? s.slots : from.area === 'hero' ? s.heroSlots : s.pendingIncoming)[from.slot]!
   return gameReducer(s, { type: 'transfer', from, to, itemId: item.id, adventureId: id(s) })
@@ -30,7 +30,7 @@ function roundTrip(s: GameState) {
   const memory = storage(); saveGame(memory, s)
   const loaded = loadGame(memory)
   assert.equal(loaded.blocked, false)
-  assert.deepEqual(loaded.state, { ...s, selection: null, moving: false, notice: '倉庫と冒険の記録を復元しました。' })
+  assert.deepEqual(loaded.state, { ...s, feedback: null, selection: null, moving: false, notice: '倉庫と冒険の記録を復元しました。' })
   return loaded.state
 }
 
@@ -45,14 +45,15 @@ function fullWarehouse(): GameState {
   return s
 }
 
-test('initial warehouse has 160 slots, 48 scattered items, six per kind and eight empty hero slots', () => {
+test('initial warehouse has 160 slots, 48 packed items, six per kind and eight empty hero slots', () => {
   const s = createGame()
   assert.equal(s.slots.length, 160); assert.equal(s.heroSlots.length, HERO_CAPACITY)
   assert.equal(new Set(ids(s)).size, 48)
   for (const kind of Object.keys(ITEM_TYPES)) assert.equal(s.slots.filter((i) => i?.kind === kind).length, 6)
   assert.equal(s.slots.filter((i) => i === null).length, 112)
-  assert.ok(s.slots.slice(0, 20).some((i) => i === null))
-  assert.ok(s.slots.slice(140).some(Boolean))
+  assert.ok(s.slots.slice(0, 48).every(Boolean))
+  assert.ok(s.slots.slice(48).every((i) => i === null))
+  assert.ok(s.slots.slice(0,48).some((i,n,a) => n > 0 && i?.kind !== a[n-1]?.kind))
   assert.deepEqual(s, createGame()); assert.equal(phase(s, 0), 'preparing')
 })
 test('any kind can be prepared and returned with its original identity and no mutations', () => {
@@ -67,13 +68,13 @@ test('any kind can be prepared and returned with its original identity and no mu
 })
 test('warehouse swaps conserve stock; occupied cross-inventory destinations reject moves', () => {
   let s = createGame(); Object.freeze(s.slots)
-  const a = s.slots[0], b = s.slots[156]
-  s = move(s, W(0), W(156)); assert.equal(s.slots[0], b); assert.equal(s.slots[156], a)
+  const a = s.slots[0], b = s.slots[47]
+  s = move(s, W(0), W(47)); assert.equal(s.slots[0], b); assert.equal(s.slots[47], a)
   for (let i = 0; i < 8; i++) s = move(s, W(s.slots.findIndex(Boolean)), H(i))
-  const action = { type: 'transfer', from: W(90), to: H(8), itemId: s.slots[90]!.id, adventureId: id(s) } as const
+  const action = { type: 'transfer', from: W(40), to: H(8), itemId: s.slots[40]!.id, adventureId: id(s) } as const
   unchanged(gameReducer(s, action), s)
-  const hero = s.heroSlots[0], warehouse = s.slots[90]
-  s = move(s, W(90), H(0)); assert.equal(s.heroSlots[0], hero); assert.equal(s.slots[90], warehouse)
+  const hero = s.heroSlots[0], warehouse = s.slots[40]
+  s = move(s, W(40), H(0)); assert.equal(s.heroSlots[0], hero); assert.equal(s.slots[40], warehouse)
   s = move(s, H(0), H(7))
   assert.equal(ids(s).length, 48); assert.equal(new Set(ids(s)).size, 48)
 })
@@ -325,7 +326,7 @@ test('quick transfer uses first empty slot, explains full/away rejection, and st
   assert.deepEqual(ids(gameReducer(s,quick)),ids(s))
   s=gameReducer(s,{...quick,from:H(0)}); assert.equal(s.slots[0],item)
   for(let n=0;n<8;n++)s=move(s,W(s.slots.findIndex(Boolean)),H(n))
-  const rejected=gameReducer(s,{...quick,from:W(90),itemId:s.slots[90]!.id})
+  const rejected=gameReducer(s,{...quick,from:W(40),itemId:s.slots[40]!.id})
   assert.match(rejected.notice,/空き/); assert.deepEqual(ids(rejected),ids(s))
   const away=depart(s), blocked=gameReducer(away,{...quick,from:H(0),itemId:away.heroSlots[0]!.id})
   assert.match(blocked.notice,/冒険中/); assert.deepEqual(blocked.heroSlots,away.heroSlots)
@@ -336,7 +337,7 @@ test('selection saves reject forged IDs; compacted overflow cannot replay a stal
   for(let n=0;n<8;n++) s=move(s,W(s.slots.findIndex(i=>i?.kind==='sword'||i?.kind==='shield')),H(n))
   s=welcome(depart(s))
   const item=s.pendingIncoming[0]
-  const stale={type:'transfer',from:{area:'sorting',slot:0},to:W(1),itemId:item.id,adventureId:id(s)} as const
+  const stale={type:'transfer',from:{area:'sorting',slot:0},to:W(100),itemId:item.id,adventureId:id(s)} as const
   s=gameReducer(s,stale)
   unchanged(gameReducer(s,stale),s)
   roundTrip(s)
@@ -348,6 +349,26 @@ test('selection saves reject forged IDs; compacted overflow cannot replay a stal
   s=gameReducer(s,{type:'select',at:{area:'sorting',slot:0}})
   s=gameReducer(s,{type:'move'})
   assert.equal(s.moving,true)
-  s=gameReducer(s,{type:'select',at:W(2)})
-  assert.ok(s.slots[2]);roundTrip(s)
+  s=gameReducer(s,{type:'select',at:W(101)})
+  assert.ok(s.slots[101]);roundTrip(s)
+})
+
+test('existing version 3/4 sparse layouts remain untouched while new games pack the same IDs',()=>{
+  const fresh=createGame(), items=fresh.slots.filter((i):i is Item=>i!==null)
+  const sparse:(Item|null)[]=Array(160).fill(null)
+  items.forEach((item,index)=>{sparse[Math.floor(index*160/items.length)]=item})
+  for(const version of [3,4]){
+    const loaded=loadGame(storage(JSON.stringify({version,state:{...fresh,slots:sparse}})))
+    assert.equal(loaded.blocked,false);assert.deepEqual(loaded.state.slots,sparse)
+    assert.deepEqual(ids(loaded.state),ids(fresh));roundTrip(loaded.state)
+  }
+})
+test('tutorial acknowledgement is independent of saves, survives reload, and reports storage failures',async()=>{
+  const {tutorialSeen,rememberTutorial,TUTORIAL_KEY}=await import('../src/ui/preferences.ts')
+  const memory=storage('game record')
+  assert.equal(tutorialSeen(memory),false)
+  assert.equal(rememberTutorial(memory),true);assert.equal(tutorialSeen(memory),true)
+  assert.equal(memory.getItem(SAVE_KEY),'game record');assert.equal(memory.getItem(TUTORIAL_KEY),'seen')
+  const fail={getItem:()=>{throw Error('denied')},setItem:()=>{throw Error('quota')}}
+  assert.equal(tutorialSeen(fail),false);assert.equal(rememberTutorial(fail),false)
 })
