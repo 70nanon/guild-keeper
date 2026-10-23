@@ -7,7 +7,7 @@ import type { LegacyState } from './legacy.ts'
 
 export const SAVE_KEY = 'guild-keeper.save'
 export const SAVE_BACKUP_KEY = 'guild-keeper.save.v1-backup'
-export const SAVE_VERSION = 3
+export const SAVE_VERSION = 4
 export type SaveStorage = Pick<Storage, 'getItem' | 'setItem'>
 export type LoadedGame = { state: GameState; blocked: boolean; message: string }
 function check(condition: unknown): asserts condition { if (!condition) throw new Error('Invalid save') }
@@ -35,7 +35,7 @@ export function migrateLegacy(value: unknown): GameState {
 }
 // Reconstruct expected ownership from the initial stock / validated v1 baseline.
 // Historical entries are records, not a second physical inventory.
-export function validateState(value: unknown, version: 2 | 3 = 3): GameState {
+export function validateState(value: unknown, version: 2 | 3 | 4 = 4): GameState {
   check(object(value))
   const s = value as unknown as GameState
   check(Array.isArray(s.slots) && s.slots.length === (version === 2 ? 96 : WAREHOUSE_CAPACITY) && Array.isArray(s.heroSlots) && s.heroSlots.length === HERO_CAPACITY
@@ -87,13 +87,18 @@ export function validateState(value: unknown, version: 2 | 3 = 3): GameState {
   if (a.timing && !a.returned) {
     check(equal(hero, a.issued))
     for (const i of a.issued) { check(!expected.has(i.id)); expected.set(i.id, i.kind) }
-  } else if (a.returned || inheritedReturn({ ...s, legacy }, a)) check(hero.length === 0)
+  } else if (version < 4 && (a.returned || inheritedReturn({ ...s, legacy }, a))) check(hero.length === 0)
   for (const live of [...s.slots, ...s.heroSlots, ...s.pendingIncoming]) {
     if (live === null) continue
     item(live); check(expected.get(live.id) === live.kind); expected.delete(live.id)
   }
   check(expected.size === 0 && s.pendingIncoming.every((i) => i !== null))
-  return { ...s, initialItemCount, slots: version === 2 ? [...s.slots, ...Array(WAREHOUSE_CAPACITY - s.slots.length).fill(null)] : s.slots, legacy, selection: null, moving: false, notice: '倉庫と冒険の記録を復元しました。' }
+  const intakeSelection = version < 4 ? [] : s.intakeSelection
+  check(Array.isArray(intakeSelection) && new Set(intakeSelection).size === intakeSelection.length)
+  const eligible = new Set([...s.heroSlots, ...s.pendingIncoming].filter((i) => i !== null).map((i) => i.id))
+  check(intakeSelection.every((id) => typeof id === 'string' && eligible.has(id))
+    && (!intakeSelection.length || a.returned !== null || inheritedReturn({ ...s, legacy }, a)))
+  return { ...s, intakeSelection, initialItemCount, slots: version === 2 ? [...s.slots, ...Array(WAREHOUSE_CAPACITY - s.slots.length).fill(null)] : s.slots, legacy, selection: null, moving: false, notice: '倉庫と冒険の記録を復元しました。' }
 }
 export function loadGame(storage: SaveStorage): LoadedGame {
   let raw: string | null
@@ -112,6 +117,7 @@ export function loadGame(storage: SaveStorage): LoadedGame {
       return { state: migrated, blocked: false, message: '' }
     }
     if (data.version === 2) return { state: validateState(data.state, 2), blocked: false, message: '' }
+    if (data.version === 3) return { state: validateState(data.state, 3), blocked: false, message: '' }
     if (data.version !== SAVE_VERSION) return { state: createGame(), blocked: true,
       message: '非対応のセーブ形式です。元の記録を保護し、自動保存を停止しました。' }
     return { state: validateState(data.state), blocked: false, message: '' }

@@ -6,26 +6,8 @@ h1 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(23px, 3vw,
 .version { color: var(--ink-muted); font-size: 12px; }
 .version span { color: var(--wood-dark); margin-left: 12px; }
 .workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; }
-.eyebrow { color: var(--ink-muted); font-size: 10px; letter-spacing: .1em; }
 h2 { font-size: 18px; font-weight: 600; }
-/* A single bound requisition sheet, not independent dashboard cards. */
-.order-panel { grid-column: 2; grid-row: 1; align-self: start; padding: 16px; background: var(--paper); border: 1px solid #705d3e; border-radius: 0; box-shadow: 0 0 0 2px #b29b70, inset 3px 0 0 #d0bc90; }
-.order-panel h2 { font-family: Georgia, 'Yu Mincho', 'Hiragino Mincho ProN', serif; }
-.order-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 3px double var(--paper-edge); }
-.order-number { font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.order-message { font-size: 12px; color: var(--ink-muted); line-height: 1.8; margin: 12px 0 16px; }
-.order-lines { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
-.order-lines li { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; border-bottom: 1px solid #a78f6050; }
-.order-item-icon { width: 24px; height: 24px; flex-shrink: 0; }
-.quantity { margin-left: auto; color: var(--grass); white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
-.line-complete { color: var(--grass); }
-.order-progress { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-muted); border-top: 3px double var(--paper-edge); margin-top: 14px; padding-top: 12px; }
-.completion { margin-top: 14px; }
-.completion p { color: var(--grass); font-size: 12px; line-height: 1.7; margin-bottom: 12px; }
-.completion button { width: 100%; }
-.order-hint { color: var(--ink-muted); font-size: 11px; line-height: 1.9; margin-top: 20px; }
-.order-complete { outline: 2px solid var(--grass); }
-.order-complete .order-progress { color: var(--grass); font-weight: 600; }
+
 /* Joined nameplate, open storage grid, and command rail read as one game tool. */
 .warehouse { grid-column: 1; grid-row: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .warehouse-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 48px; background: #665136; border: 1px solid #493925; box-shadow: inset 0 0 0 1px #a18c60; padding: 7px 12px; }
@@ -77,17 +59,6 @@ h2 { font-size: 18px; font-weight: 600; }
   .version { font-size: 0; }
   .version span { font-size: 11px; margin: 0; }
   .workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
-  .order-panel { grid-column: 1; grid-row: 1; padding: 10px 12px; width: 100%; }
-  .order-heading { border-bottom: 1px solid var(--paper-edge); padding-bottom: 5px; margin-bottom: 5px; }
-  .order-panel h2 { font-size: 16px; }
-  .order-message, .order-hint { display: none; }
-  .order-lines { grid-template-columns: 1fr 1fr; gap: 1px 12px; margin-top: 6px; }
-  .order-lines li { font-size: 11px; min-height: 28px; gap: 4px; }
-  .order-item-icon { width: 20px; height: 20px; }
-  .order-progress { padding-top: 6px; margin-top: 6px; font-size: 11px; }
-  .completion { margin-top: 8px; }
-  .completion p { display: none; }
-  .completion button { padding: 7px 12px; }
   .warehouse { grid-row: 2; }
   .warehouse-heading { min-height: 34px; padding: 3px 8px; }
   .warehouse-heading h2 { font-size: 14px; }
@@ -104,36 +75,23 @@ h2 { font-size: 18px; font-weight: 600; }
 }
 @media (max-height: 620px) and (min-width: 761px) {
   .site-header { min-height: 52px; margin-bottom: 8px; }
-  .order-panel { padding: 12px; }
-  .order-message, .order-hint { display: none; }
 }
 @media (max-height: 470px) {
   .app-shell { height: auto; min-height: 100svh; }
   .inventory-scroll { flex: none; height: 220px; }
 }
 
-/* A receipt is part of the existing order book; storage still owns the screen. */
-.return-panel { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--paper-edge); font-size: 11px; line-height: 1.6; }
-.return-panel button { width: 100%; margin-top: 5px; }
-.return-caption { color: var(--ink-muted); }
-.return-report { margin-top: 8px; }
+
 .return-comment { color: var(--grass); font-weight: 600; margin-bottom: 4px; }
-.pending-arrivals { margin-top: 8px; }
-.order-panel { max-height: 100%; overflow-y: auto; }
 @media (max-width: 760px) {
-  .order-panel { max-height: 42svh; }
 }
 
-.save-tools { margin-top: 12px; border-top: 1px solid #b8a780; padding-top: 8px; }
 .save-message { font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
-.save-tools button { margin-top: 5px; width: 100%; }
 .recovery-panel { max-width: 600px; margin: 8vh auto; padding: 24px; background: #eee3c3; color: #3c3021; }
 .recovery-panel p { margin: 16px 0; line-height: 1.8; }
 .recovery-panel button { margin: 8px; }
 
 /* One adventure ledger and the same physical cells on both sides. */
-.day-number { font-size: 12px; white-space: nowrap; }
-.adventure-message { font-size: 12px; color: var(--ink-muted); line-height: 1.7; margin: 8px 0; }
 .hero-heading { display: flex; align-items: center; justify-content: space-between; margin: 10px 0 5px; }
 .hero-heading h3 { font-size: 13px; margin: 0; }
 .hero-heading > span { font-size: 11px; }
@@ -145,9 +103,6 @@ h2 { font-size: 18px; font-weight: 600; }
 .adventure-controls button, .pending-arrivals button { width: 100%; margin-top: 5px; }
 .adventure-time { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
 .adventure-time strong { font-size: 18px; font-weight: 600; }
-.pending-arrivals { font-size: 11px; }
-.save-tools summary, .return-panel summary { cursor: pointer; min-height: 44px; padding: 10px 0; font-size: 11px; line-height: 1.5; }
-.save-tools p { font-size: 11px; line-height: 1.7; }
 .item-slot { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: pan-y pinch-zoom; }
 .item-slot[draggable="true"] { cursor: grab; }
 .item-slot svg, .item-slot span { pointer-events: none; }
@@ -156,12 +111,72 @@ h2 { font-size: 18px; font-weight: 600; }
 .item-slot.drag-origin { opacity: .55; transform: translateY(-3px); border-color: #f5e3a7; }
 .drag-ghost { position: fixed; z-index: 1000; pointer-events: none; transform: translate(-50%, -115%); display: flex; flex-direction: column; align-items: center; min-width: 60px; padding: 5px; background: #665136; color: #fff1c8; border: 2px solid #f5e3a7; box-shadow: 2px 4px 0 #392e2160; font-size: 10px; }
 @media (max-width: 760px) {
-  .order-panel { max-height: 42svh; }
   .hero-grid .item-slot { min-height: 50px; }
   .hero-grid .item-icon { width: 24px; height: 24px; }
-  .adventure-message { font-size: 11px; margin: 4px 0; line-height: 1.5; }
   .hero-heading { margin-top: 5px; }
-  .order-panel h2 { font-size: 14px; }
   .adventure-controls { line-height: 1.5; }
   .notice { min-height: 32px; }
 }
+
+/* Compact adventure ledger above a persistent travelling toolbox and warehouse. */
+.game-surface { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.workspace { display: flex; flex-direction: column; gap: 8px; }
+.adventure-strip { background: var(--paper, #eee3c3); border: 1px solid #9b8355; padding: 5px 10px; color: #3c3021; }
+.plan-summary { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+.plan-toggle { flex: 1; min-width: 0; min-height: 44px; text-align: left; border: 0; background: transparent; color: inherit; }
+.plan-toggle span, .plan-toggle small { display: block; }
+.plan-toggle span { font-weight: 600; }
+.plan-toggle small { font-size: 11px; margin-top: 3px; }
+.adventure-controls { margin: 0; flex-shrink: 0; }
+.adventure-controls button { margin: 0; width: auto; }
+.adventure-time { gap: 6px; flex-wrap: wrap; font-size: 11px; }
+.adventure-time strong { font-size: 14px; }
+.hero-panel { color: #3c3021; background: #d4c7a3; border: 1px solid #665136; padding: 4px 6px; flex-shrink: 0; }
+.hero-heading { margin: 0 0 4px; }
+.hero-heading h2 { font-size: 14px; }
+.hero-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+.hero-grid .item-slot { min-height: 58px; }
+.warehouse { flex: 1; min-height: 0; }
+.sorting-panel summary, .intake-panel summary { cursor: pointer; min-height: 32px; padding: 6px 0; font-size: 12px; }
+.sorting-panel p { font-size: 11px; margin: 5px 0; }
+.sorting-scroll { max-height: 140px; overflow: auto; }
+.intake-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.intake-panel details { flex: 1; min-width: 150px; }
+.intake-options { max-height: 130px; overflow: auto; }
+.intake-options label { min-height: 44px; display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.intake-options small { font-size: 10px; }
+.intake-options input { width: 20px; height: 20px; }
+.intake-panel .return-comment { font-size: 11px; flex-basis: 100%; }
+.overlay { position: fixed; inset: 0; z-index: 1100; }
+.overlay-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; background: #241e18a0; border: 0; }
+.side-menu, .plan-dialog { position: absolute; display: block; background: #eee3c3; color: #3c3021; border: 3px double #665136; padding: 18px; overflow: auto; }
+.side-menu { inset: 0 auto 0 0; margin: 0; width: min(320px, 90vw); height: 100%; }
+.plan-dialog { inset: 70px 12px auto; width: min(540px, calc(100% - 24px)); max-height: calc(100svh - 100px); margin: 0 auto; }
+.side-menu p, .plan-dialog p { font-size: 13px; line-height: 1.8; margin: 16px 0; }
+.side-menu h2, .plan-dialog h2 { margin-bottom: 12px; }
+.site-header { gap: 10px; }
+.menu-toggle { padding: 5px 10px; }
+@media (max-width: 760px) {
+  .site-header { min-height: 44px; margin-bottom: 6px; }
+  .workspace { gap: 5px; }
+  .adventure-strip { padding: 3px 6px; }
+  .plan-summary { gap: 4px; }
+  .plan-toggle span { font-size: 12px; }
+  .plan-toggle small { font-size: 10px; }
+  .adventure-controls button { font-size: 11px; padding: 6px; }
+  .hero-heading > span { font-size: 10px; }
+  .hero-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); padding: 1px; }
+  .hero-grid .item-slot { min-height: 46px; gap: 1px; }
+  .hero-grid .item-icon { width: 24px; height: 24px; }
+  .hero-grid .item-name { display: none; }
+  .hero-panel { padding: 3px; }
+  .hero-grid .item-slot { min-width: 0; }
+  .intake-panel .return-comment { display: none; }
+}
+@media (max-width: 400px) {
+  .hero-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.hero-panel { max-height: 42svh; overflow-y: auto; }
+ .save-warning { font-size: 11px; color: #7d2e20; max-width: 120px; }
+.plan-toggle small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.site-header:has(.save-warning) .version { display: none; }
